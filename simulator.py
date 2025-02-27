@@ -1,8 +1,9 @@
 from enum import Enum
+import os
 import numpy as np
 from typing import Dict, List
 from scipy import stats
-
+import pandas as pd
 class AggregationMethod(Enum):
     ARITHMETIC_MEAN = "arithmetic_mean"
     MEDIAN = "median"
@@ -81,7 +82,7 @@ class VotingSimulator:
         
         return dict(zip(self.metrics, self.metric_weights))
     
-    def allocate_funds(self, projects: Dict[str, Dict[str, float]]) -> Dict[str, float]:
+    def allocate_funds(self, projects_metrics: Dict[str, Dict[str, float]]) -> Dict[str, float]:
         """
         Allocate funds to projects based on their metrics and weights
         
@@ -94,7 +95,7 @@ class VotingSimulator:
         project_scores = {}
         
         # Calculate weighted score for each project
-        for project_name, metrics in projects.items():
+        for project_name, metrics in projects_metrics.items():
             score = 0
             for metric, value in metrics.items():
                 weight_index = self.metrics.index(metric)
@@ -110,8 +111,7 @@ class VotingSimulator:
         
         return fund_allocation
 
-    def generate_random_projects(self, 
-                               
+    def generate_projects_metrics(self, 
                                metric_ranges: Dict[str, tuple]) -> Dict[str, Dict[str, float]]:
         """
         Generate random projects with metrics within specified ranges
@@ -148,9 +148,9 @@ if __name__ == "__main__":
         "tvl",
         "developer_activity"
     ]
-    num_projects=100
-    num_voters=300
-    total_funds=10_000_000
+    num_projects = 100
+    num_voters = 300
+    total_funds = 10_000_000
     
     # Test different aggregation methods
     for method in AggregationMethod:
@@ -176,12 +176,28 @@ if __name__ == "__main__":
             "tvl": (1000000, 5000000),
             "developer_activity": (10, 100)
         }
+
+        # Create data directory if it doesn't exist
+        os.makedirs('data/simulation_data/projects_metrics', exist_ok=True)
+        os.makedirs('data/simulation_data/fund_allocation', exist_ok=True)
         
         # Generate random projects
-        projects = simulator.generate_random_projects(metric_ranges=metric_ranges)
+        projects_metrics = simulator.generate_projects_metrics(metric_ranges=metric_ranges)
         
         # Allocate funds based on metrics and weights
-        allocations = simulator.allocate_funds(projects)
+        allocations = simulator.allocate_funds(projects_metrics)
+
+        # Save results to CSV files
+        projects_df = pd.DataFrame.from_dict(projects_metrics, orient='index')
+        projects_df.index.name = 'project'
+        projects_df.to_csv(f'data/simulation_data/projects_metrics/projects_metrics_{method.value}.csv')
+        
+        allocations_df = pd.DataFrame.from_dict(allocations, 
+                                              orient='index', 
+                                              columns=['allocation'])
+        allocations_df.index.name = 'project'
+        allocations_df.to_csv(f'data/simulation_data/fund_allocation/fund_allocation_{method.value}.csv')
+
         print("\nFund Allocations (OP tokens):")
         for project, amount in allocations.items():
             print(f"{project}: {amount:,.0f}")
