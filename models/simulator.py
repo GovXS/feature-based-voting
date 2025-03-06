@@ -180,6 +180,7 @@ if __name__ == "__main__":
         }
 
         # Create data directory if it doesn't exist
+    
         os.makedirs('data/simulation_data/projects_metrics', exist_ok=True)
         os.makedirs('data/simulation_data/fund_allocation', exist_ok=True)
         
