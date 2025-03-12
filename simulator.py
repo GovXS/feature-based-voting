@@ -29,7 +29,11 @@ class VotingSimulator:
             
         elif self.elicitation_method == ElicitationMethod.CUMULATIVE:
             vote = np.random.uniform(0, 1, len(self.metrics))
-            return vote / vote.sum()
+            # Add small epsilon to avoid division by zero
+            vote_sum = vote.sum()
+            if vote_sum == 0:
+                vote = np.ones(len(self.metrics)) / len(self.metrics)  # Equal distribution if all zeros
+            return vote / vote_sum
             
         elif self.elicitation_method == ElicitationMethod.APPROVAL:
             return np.random.choice([0, 1], size=len(self.metrics))
@@ -59,7 +63,12 @@ class VotingSimulator:
             
         elif self.elicitation_method == ElicitationMethod.CUMULATIVE:
             perturbed = np.clip(perturbed, 0, 1)
-            perturbed = perturbed / perturbed.sum()
+            vote_sum = perturbed.sum()
+            # Add small epsilon to avoid division by zero
+            if vote_sum < 1e-10:  # More robust check for near-zero values
+                perturbed = np.ones(len(self.metrics)) / len(self.metrics)
+            else:
+                perturbed = perturbed / (vote_sum + 1e-10)  # Add epsilon to denominator
             
         elif self.elicitation_method == ElicitationMethod.APPROVAL:
             perturbed = np.where(perturbed > 0.5, 1, 0)
@@ -85,6 +94,9 @@ class VotingSimulator:
         Returns:
             Aggregated weights of shape (num_metrics,)
         """
+        # Replace any remaining nan values with 0 before aggregation
+        votes = np.nan_to_num(votes, nan=0.0)
+        
         if method == "mean":
             return np.mean(votes, axis=0)
         elif method == "median":
@@ -428,119 +440,4 @@ if __name__ == "__main__":
         print(f"Minimum L1 distance: {clone_distance}")
         print(f"Cloning strategy: { {metrics[i]: f'x{count}' for i, count in cloning.items()} }") 
         # Generate random value matrix
-        value_matrix = np.random.uniform(0, 1, size=(num_projects, len(metrics)))
         
-        # Compute project scores
-        scores = simulator.compute_scores(value_matrix, weights)
-        print("Project scores:", scores)
-        
-        # Create ideal scores (random for example)
-        ideal_scores = np.random.uniform(0, 1, size=num_projects)
-        
-        # Run bribery optimization
-       
-        min_distance, optimized_votes = simulator.bribery_optimization(
-            votes, value_matrix, ideal_scores, budget)
-        
-        print(f"Minimum L1 distance: {min_distance}")
-        print("Original votes sample:\n", votes[:3])
-        print("Optimized votes sample:\n", optimized_votes[:3])
-        
-        # Test control by deletion
-        max_deletions = 1
-        del_distance, del_indices = simulator.control_by_deletion(
-            votes, value_matrix, ideal_scores, max_deletions)
-        print(f"\nControl by Deletion:")
-        print(f"Minimum L1 distance: {del_distance}")
-        print(f"Metrics to delete: {[metrics[i] for i in del_indices]}")
-        
-        # Test control by cloning
-        max_clones = 2
-        clone_distance, cloning = simulator.control_by_cloning(
-            votes, value_matrix, ideal_scores, max_clones)
-        print(f"\nControl by Cloning:")
-        print(f"Minimum L1 distance: {clone_distance}")
-        print(f"Cloning strategy: { {metrics[i]: f'x{count}' for i, count in cloning.items()} }") 
-        # Generate random value matrix
-        value_matrix = np.random.uniform(0, 1, size=(num_projects, len(metrics)))
-        
-        # Compute project scores
-        scores = simulator.compute_scores(value_matrix, weights)
-        print("Project scores:", scores)
-        
-        # Create ideal scores (random for example)
-        ideal_scores = np.random.uniform(0, 1, size=num_projects)
-        
-        # Run bribery optimization
-       
-        min_distance, optimized_votes = simulator.bribery_optimization(
-            votes, value_matrix, ideal_scores, budget)
-        
-        print(f"Minimum L1 distance: {min_distance}")
-        print("Original votes sample:\n", votes[:3])
-        print("Optimized votes sample:\n", optimized_votes[:3])
-        
-        # Test control by deletion
-        max_deletions = 1
-        del_distance, del_indices = simulator.control_by_deletion(
-            votes, value_matrix, ideal_scores, max_deletions)
-        print(f"\nControl by Deletion:")
-        print(f"Minimum L1 distance: {del_distance}")
-        print(f"Metrics to delete: {[metrics[i] for i in del_indices]}")
-        
-        # Test control by cloning
-        max_clones = 2
-        clone_distance, cloning = simulator.control_by_cloning(
-            votes, value_matrix, ideal_scores, max_clones)
-        print(f"\nControl by Cloning:")
-        print(f"Minimum L1 distance: {clone_distance}")
-        print(f"Cloning strategy: { {metrics[i]: f'x{count}' for i, count in cloning.items()} }") 
-        # Generate random value matrix
-        value_matrix = np.random.uniform(0, 1, size=(num_projects, len(metrics)))
-        
-        # Compute project scores
-        scores = simulator.compute_scores(value_matrix, weights)
-        print("Project scores:", scores)
-        
-        # Create ideal scores (random for example)
-        ideal_scores = np.random.uniform(0, 1, size=num_projects)
-        
-        # Run bribery optimization
-       
-        min_distance, optimized_votes = simulator.bribery_optimization(
-            votes, value_matrix, ideal_scores, budget)
-        
-        print(f"Minimum L1 distance: {min_distance}")
-        print("Original votes sample:\n", votes[:3])
-        print("Optimized votes sample:\n", optimized_votes[:3])
-        
-        # Test control by deletion
-        max_deletions = 1
-        del_distance, del_indices = simulator.control_by_deletion(
-            votes, value_matrix, ideal_scores, max_deletions)
-        print(f"\nControl by Deletion:")
-        print(f"Minimum L1 distance: {del_distance}")
-        print(f"Metrics to delete: {[metrics[i] for i in del_indices]}")
-        
-        # Test control by cloning
-        max_clones = 2
-        clone_distance, cloning = simulator.control_by_cloning(
-            votes, value_matrix, ideal_scores, max_clones)
-        print(f"\nControl by Cloning:")
-        print(f"Minimum L1 distance: {clone_distance}")
-        print(f"Cloning strategy: { {metrics[i]: f'x{count}' for i, count in cloning.items()} }")
-
-
-
-         # Create ideal scores (random for example)
-    ideal_scores = np.random.uniform(0, 1, size=num_projects)
-    
-    # Run manipulation optimization
-    min_distance, optimized_votes = simulator.manipulation(
-        votes, value_matrix, ideal_scores)
-    
-    print(f"\nManipulation Results:")
-    print(f"Minimum L1 distance: {min_distance}")
-    print("Original votes sample:\n", votes[:3])
-    print("Optimized votes sample:\n", optimized_votes[:3])
-
