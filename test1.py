@@ -62,7 +62,7 @@ if __name__ == "__main__":
      # Run simulations for each combination of elicitation and aggregation
     results = {}
     for elicitation in [ElicitationMethod.CUMULATIVE, ElicitationMethod.FRACTIONAL, ElicitationMethod.APPROVAL]:
-        for aggregation in ["arithmetic_mean", "geometric_mean"]:
+        for aggregation in ["arithmetic_mean", "median"]:
             print(f"Running simulations for {elicitation} elicitation and {aggregation} aggregation...")
 
             # Update simulator with current elicitation method
