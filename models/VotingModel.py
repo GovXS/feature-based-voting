@@ -121,7 +121,6 @@ class VotingSimulator:
 # Example usage
 if __name__ == "__main__":
 
-
     metrics = ["daily_users", "transaction_volume", "unique_wallets"]
     num_voters = 100
     num_projects = 5
