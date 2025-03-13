@@ -8,7 +8,7 @@ if __name__ == "__main__":
     run_bribery_simulation()
     
     print("Running Manipulation Simulation...")
-    run_manipulation_simulation()
+    #run_manipulation_simulation()
     
     print("Running Deletion Simulation...")
     run_deletion_simulation()

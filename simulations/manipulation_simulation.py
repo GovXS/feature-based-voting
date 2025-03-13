@@ -1,6 +1,6 @@
 import numpy as np
 from models.VotingModel import VotingSimulator, ElicitationMethod
-from models.Metric_based_optimization import VotingOptimizer
+from models.Metric_based_optimization import manipulation
 
 def run_manipulation_simulation():
     # Simulation parameters
@@ -22,7 +22,7 @@ def run_manipulation_simulation():
     ideal_scores = np.random.uniform(0, 1, size=num_projects)
 
     # Run manipulation optimization
-    min_distance = VotingOptimizer.manipulation(
+    min_distance = manipulation(
         votes, value_matrix, ideal_scores,
         elicitation="cumulative", aggregation="arithmetic_mean"
     )

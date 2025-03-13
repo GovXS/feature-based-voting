@@ -1,6 +1,6 @@
 import numpy as np
 from models.VotingModel import VotingSimulator, ElicitationMethod
-from models.Metric_based_optimization import VotingOptimizer
+from models.Metric_based_optimization import bribery_optimization
 
 def run_bribery_simulation():
     # Simulation parameters
@@ -23,8 +23,8 @@ def run_bribery_simulation():
     ideal_scores = np.random.uniform(0, 1, size=num_projects)
 
     # Run bribery optimization
-    min_distance = VotingOptimizer.bribery_optimization(
-        simulator, votes, value_matrix, ideal_scores, budget,
+    min_distance = bribery_optimization(
+        votes, value_matrix, ideal_scores, budget,
         elicitation="cumulative", aggregation="arithmetic_mean"
     )
 

@@ -1,6 +1,6 @@
 import numpy as np
 from models.VotingModel import VotingSimulator, ElicitationMethod
-from models.Metric_based_optimization import VotingOptimizer
+from models.Metric_based_optimization import control_by_deletion
 
 def run_deletion_simulation():
     # Simulation parameters
@@ -8,6 +8,7 @@ def run_deletion_simulation():
     num_voters = 100
     num_projects = 5
     max_deletions = 1
+    budget = 10000
 
     # Initialize simulator
     simulator = VotingSimulator(
@@ -23,8 +24,8 @@ def run_deletion_simulation():
     ideal_scores = np.random.uniform(0, 1, size=num_projects)
 
     # Run control by deletion
-    min_distance = VotingOptimizer.control_by_deletion(
-        simulator, votes, value_matrix, ideal_scores, max_deletions,
+    min_distance = control_by_deletion(
+        votes, value_matrix, ideal_scores,
         elicitation="cumulative", aggregation="arithmetic_mean"
     )
 
