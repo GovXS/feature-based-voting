@@ -23,7 +23,7 @@ def run_manipulation_simulation():
 
     # Run manipulation optimization
     min_distance = manipulation(
-        votes, value_matrix, ideal_scores,
+        votes, value_matrix,
         elicitation="cumulative", aggregation="arithmetic_mean"
     )
 

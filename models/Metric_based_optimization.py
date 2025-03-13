@@ -1,4 +1,3 @@
-
 import cvxpy as cp
 import numpy as np
 from typing import Dict, List, Tuple
@@ -313,6 +312,9 @@ def control_by_cloning(imp, val, ideal_scores,elicitation, aggregation):
         imp_new = np.copy(imp)
         val_new = np.copy(val)
 
+       # Convert set to list of integers (Change 1)
+        cloned_features = list(cloned_features)
+    
         num_clones = len(cloned_features)
 
         for f in cloned_features:
@@ -321,7 +323,9 @@ def control_by_cloning(imp, val, ideal_scores,elicitation, aggregation):
 
         if elicitation == "cumulative":
             imp_new[:, cloned_features] /= (1 + num_clones)  # Normalize original feature
-            imp_new[:, -num_clones:] = imp[:, list(cloned_features)][:, np.newaxis] / (1 + num_clones)  # Normalize clones
+            #Change 2
+            #imp_new[:, -num_clones:] = imp[:, list(cloned_features)][:, np.newaxis] / (1 + num_clones)  # Normalize clones
+            imp_new[:, -num_clones:] = imp[:, cloned_features] / (1 + num_clones)  # Remove np.newaxis
 
         elif elicitation == "plurality":
             for i in range(n):
