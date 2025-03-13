@@ -1,206 +1,443 @@
 from enum import Enum
-import os
 import numpy as np
-from typing import Dict, List
-from scipy import stats
-import pandas as pd
-from datetime import datetime
+from typing import Dict, List, Tuple
+from scipy.stats import norm
+from scipy.optimize import minimize
+from itertools import combinations
 
-class AggregationMethod(Enum):
-    ARITHMETIC_MEAN = "arithmetic_mean"
-    MEDIAN = "median"
-    GEOMETRIC_MEAN = "geometric_mean"
-    QUADRATIC = "quadratic"
+class ElicitationMethod(Enum):
+    FRACTIONAL = "fractional"  # Each vote between 0 and 1
+    CUMULATIVE = "cumulative"  # Sum of votes equals 1
+    APPROVAL = "approval"      # Binary (0 or 1)
+    PLURALITY = "plurality"    # Single 1, others 0
 
 class VotingSimulator:
-    def __init__(self, 
-                 total_funds: float = 8_000_000,  # Total OP tokens
-                 num_voters: int = 200,
-                 num_projects: int = 5,
-                 metrics: List[str] = None,
-                 aggregation_method: AggregationMethod = AggregationMethod.ARITHMETIC_MEAN):
-        """
-        Initialize the voting simulator
-        
-        Args:
-            total_funds: Total amount of tokens available for allocation
-            num_voters: Number of voters participating
-            metrics: List of metric names to track. If None, uses default metrics
-            aggregation_method: Method to aggregate votes
-        """
-        self.metrics = metrics if metrics is not None else []
-        self.total_funds = total_funds
+    def __init__(self,
+                 num_voters: int,
+                 metrics: List[str],
+                 elicitation_method: ElicitationMethod,
+                 alpha: float = 1.0):
         self.num_voters = num_voters
-        self.metric_weights = None
-        self.num_projects = num_projects
-        self.aggregation_method = aggregation_method
-        
-    def _aggregate_votes(self, all_votes: np.ndarray) -> np.ndarray:
-        """
-        Aggregate votes using the specified method
-        
-        Args:
-            all_votes: Array of shape (num_voters, num_metrics) containing all votes
-        Returns:
-            Array of shape (num_metrics,) containing aggregated votes
-        """
-        if self.aggregation_method == AggregationMethod.ARITHMETIC_MEAN:
-            return np.mean(all_votes, axis=0)
+        self.metrics = metrics
+        self.elicitation_method = elicitation_method
+        self.alpha = alpha  # Mallows model parameter
+
+    def _generate_base_vote(self) -> np.ndarray:
+        """Generate a base vote according to the elicitation method"""
+        if self.elicitation_method == ElicitationMethod.FRACTIONAL:
+            return np.random.uniform(0, 1, len(self.metrics))
             
-        elif self.aggregation_method == AggregationMethod.MEDIAN:
-            return np.median(all_votes, axis=0)
+        elif self.elicitation_method == ElicitationMethod.CUMULATIVE:
+            vote = np.random.uniform(0, 1, len(self.metrics))
+            # Add small epsilon to avoid division by zero
+            vote_sum = vote.sum()
+            if vote_sum == 0:
+                vote = np.ones(len(self.metrics)) / len(self.metrics)  # Equal distribution if all zeros
+            return vote / vote_sum
             
-        elif self.aggregation_method == AggregationMethod.GEOMETRIC_MEAN:
-            # Add small epsilon to avoid zero values
-            return stats.gmean(all_votes + 1e-10, axis=0)
+        elif self.elicitation_method == ElicitationMethod.APPROVAL:
+            return np.random.choice([0, 1], size=len(self.metrics))
             
-        elif self.aggregation_method == AggregationMethod.QUADRATIC:
-            # Square the votes before averaging, then take square root
-            squared_votes = np.square(all_votes)
-            mean_squared = np.mean(squared_votes, axis=0)
-            return np.sqrt(mean_squared)
+        elif self.elicitation_method == ElicitationMethod.PLURALITY:
+            vote = np.zeros(len(self.metrics))
+            vote[np.random.randint(len(self.metrics))] = 1
+            return vote
             
         else:
-            raise ValueError(f"Unknown aggregation method: {self.aggregation_method}")
+            raise ValueError(f"Unknown elicitation method: {self.elicitation_method}")
 
-    def simulate_voting(self) -> Dict[str, float]:
-        """Simulate voters allocating funds to different metrics"""
-        all_votes = []
-        
-        # Each voter allocates their share of tokens
-        for _ in range(self.num_voters):
-            # Generate random weights that sum to 1
-            votes = np.random.dirichlet(np.ones(len(self.metrics)))
-            # Scale votes by total funds
-            votes = votes * self.total_funds
-            all_votes.append(votes)
-            
-        all_votes = np.array(all_votes)
-        final_votes = self._aggregate_votes(all_votes)
-        
-        # Normalize to ensure sum equals total_funds
-        final_votes = (final_votes / final_votes.sum()) * self.total_funds
-        self.metric_weights = final_votes / self.total_funds
-        
-        return dict(zip(self.metrics, self.metric_weights))
-    
-    def allocate_funds(self, projects_metrics: Dict[str, Dict[str, float]]) -> Dict[str, float]:
+    def _apply_mallows(self, base_vote: np.ndarray) -> np.ndarray:
         """
-        Allocate funds to projects based on their metrics and weights
-        
+        Apply Mallows model to generate votes with noise
         Args:
-            projects: Dict of project_name -> {metric_name: metric_value}
-        """
-        if self.metric_weights is None:
-            raise ValueError("Must run simulate_voting() first")
-            
-        project_scores = {}
-        
-        # Calculate weighted score for each project
-        for project_name, metrics in projects_metrics.items():
-            score = 0
-            for metric, value in metrics.items():
-                weight_index = self.metrics.index(metric)
-                score += value * self.metric_weights[weight_index]
-            project_scores[project_name] = score
-            
-        # Normalize scores to get fund allocation
-        total_score = sum(project_scores.values())
-        fund_allocation = {
-            project: (score / total_score) * self.total_funds 
-            for project, score in project_scores.items()
-        }
-        
-        return fund_allocation
-
-    def generate_projects_metrics(self, 
-                               metric_ranges: Dict[str, tuple]) -> Dict[str, Dict[str, float]]:
-        """
-        Generate random projects with metrics within specified ranges
-        
-        Args:
-            num_projects: Number of projects to generate
-            metric_ranges: Dict of metric_name -> (min_value, max_value)
+            base_vote: The base vote to perturb
         Returns:
-            Dict of project_name -> {metric_name: metric_value}
+            Perturbed vote that respects the elicitation method constraints
         """
-        projects = {}
+        noise = norm.rvs(scale=1/self.alpha, size=len(self.metrics))
+        perturbed = base_vote + noise
         
-        for i in range(self.num_projects ):
-            project_metrics = {}
-            for metric, (min_val, max_val) in metric_ranges.items():
-                # Generate random value within range
-                value = np.random.uniform(min_val, max_val)
-                # Round to integer if the range is large enough
-                if max_val - min_val > 1:
-                    value = round(value)
-                project_metrics[metric] = value
+        # Ensure votes respect the elicitation method constraints
+        if self.elicitation_method == ElicitationMethod.FRACTIONAL:
+            perturbed = np.clip(perturbed, 0, 1)
             
-            projects[f"Project {chr(65 + i)}"] = project_metrics
+        elif self.elicitation_method == ElicitationMethod.CUMULATIVE:
+            perturbed = np.clip(perturbed, 0, 1)
+            vote_sum = perturbed.sum()
+            # Add small epsilon to avoid division by zero
+            if vote_sum < 1e-10:  # More robust check for near-zero values
+                perturbed = np.ones(len(self.metrics)) / len(self.metrics)
+            else:
+                perturbed = perturbed / (vote_sum + 1e-10)  # Add epsilon to denominator
             
-        return projects
+        elif self.elicitation_method == ElicitationMethod.APPROVAL:
+            perturbed = np.where(perturbed > 0.5, 1, 0)
+            
+        elif self.elicitation_method == ElicitationMethod.PLURALITY:
+            perturbed = np.zeros_like(perturbed)
+            perturbed[np.argmax(perturbed)] = 1
+            
+        return perturbed
+
+    def generate_votes(self) -> np.ndarray:
+        """Generate votes using Mallows model"""
+        base_vote = self._generate_base_vote()
+        votes = np.array([self._apply_mallows(base_vote) for _ in range(self.num_voters)])
+        return votes
+
+    def aggregate_votes(self, votes: np.ndarray, method: str = "mean") -> np.ndarray:
+        """
+        Aggregate votes using specified method
+        Args:
+            votes: Array of shape (num_voters, num_metrics)
+            method: Aggregation method ("mean" or "median")
+        Returns:
+            Aggregated weights of shape (num_metrics,)
+        """
+        # Replace any remaining nan values with 0 before aggregation
+        votes = np.nan_to_num(votes, nan=0.0)
+        
+        if method == "mean":
+            return np.mean(votes, axis=0)
+        elif method == "median":
+            return np.median(votes, axis=0)
+        else:
+            raise ValueError(f"Unknown aggregation method: {method}")
+
+    def compute_scores(self, 
+                     value_matrix: np.ndarray, 
+                     weights: np.ndarray) -> np.ndarray:
+        """
+        Compute project scores using value matrix and weights
+        Args:
+            value_matrix: Array of shape (num_projects, num_metrics)
+            weights: Array of shape (num_metrics,)
+        Returns:
+            Project scores of shape (num_projects,)
+        """
+        return value_matrix @ weights
+
+    def bribery_optimization(self,
+                           votes: np.ndarray,
+                           value_matrix: np.ndarray,
+                           ideal_scores: np.ndarray,
+                           budget: float,
+                           method: str = "mean") -> Tuple[float, np.ndarray]:
+        """
+        Find optimal vote shifts to minimize distance to ideal scores
+        
+        Args:
+            votes: Current votes (num_voters x num_metrics)
+            value_matrix: Project metrics (num_projects x num_metrics)
+            ideal_scores: Desired project scores (num_projects,)
+            budget: Maximum total shift allowed
+            method: Aggregation method ("mean" or "median")
+        Returns:
+            Tuple of (min_distance, optimized_votes)
+        """
+        num_voters, num_metrics = votes.shape
+        
+        def objective(shifts: np.ndarray) -> float:
+            # Reshape shifts and apply to votes
+            shifts = shifts.reshape((num_voters, num_metrics))
+            new_votes = np.clip(votes + shifts, 0, 1)
+            
+            # Ensure cumulative constraints if needed
+            if self.elicitation_method == ElicitationMethod.CUMULATIVE:
+                new_votes = new_votes / new_votes.sum(axis=1, keepdims=True)
+            
+            # Compute new weights and scores
+            weights = self.aggregate_votes(new_votes, method)
+            new_scores = self.compute_scores(value_matrix, weights)
+            
+            # L1 distance to ideal scores
+            return np.linalg.norm(new_scores - ideal_scores, ord=1)
+        
+        # Constraints
+        constraints = [
+            # Total shift cannot exceed budget
+            {'type': 'ineq', 'fun': lambda x: budget - np.sum(np.abs(x))}
+        ]
+        
+        # Bounds for shifts
+        bounds = [(-1, 1)] * (num_voters * num_metrics)
+        
+        # Initial guess (no shift)
+        x0 = np.zeros(num_voters * num_metrics)
+        
+        # Optimize
+        result = minimize(objective, x0, 
+                         method='SLSQP',
+                         bounds=bounds,
+                         constraints=constraints)
+        
+        # Reshape optimal shifts
+        optimal_shifts = result.x.reshape((num_voters, num_metrics))
+        optimal_votes = np.clip(votes + optimal_shifts, 0, 1)
+        
+        return result.fun, optimal_votes
+
+    def control_by_deletion(self,
+                          votes: np.ndarray,
+                          value_matrix: np.ndarray,
+                          ideal_scores: np.ndarray,
+                          max_deletions: int,
+                          method: str = "mean") -> Tuple[float, List[int]]:
+        """
+        Find optimal metric deletion to minimize distance to ideal scores
+        
+        Args:
+            votes: Current votes (num_voters x num_metrics)
+            value_matrix: Project metrics (num_projects x num_metrics)
+            ideal_scores: Desired project scores (num_projects,)
+            max_deletions: Maximum number of metrics to delete
+            method: Aggregation method ("mean" or "median")
+        Returns:
+            Tuple of (min_distance, list of indices to delete)
+        """
+        num_metrics = votes.shape[1]
+        min_distance = float('inf')
+        best_deletion = []
+        
+        # Try all possible combinations of deletions
+        for num_del in range(1, max_deletions + 1):
+            for del_indices in combinations(range(num_metrics), num_del):
+                # Create mask for remaining metrics
+                mask = np.ones(num_metrics, dtype=bool)
+                mask[list(del_indices)] = False
+                
+                # Handle cumulative case
+                if self.elicitation_method == ElicitationMethod.CUMULATIVE:
+                    remaining_votes = votes[:, mask]
+                    remaining_votes = remaining_votes / remaining_votes.sum(axis=1, keepdims=True)
+                else:
+                    remaining_votes = votes[:, mask]
+                
+                # Compute scores with remaining metrics
+                weights = self.aggregate_votes(remaining_votes, method)
+                remaining_value_matrix = value_matrix[:, mask]
+                scores = self.compute_scores(remaining_value_matrix, weights)
+                
+                # Compute distance
+                distance = np.linalg.norm(scores - ideal_scores, ord=1)
+                
+                if distance < min_distance:
+                    min_distance = distance
+                    best_deletion = list(del_indices)
+        
+        return min_distance, best_deletion
+
+    def control_by_cloning(self,
+                         votes: np.ndarray,
+                         value_matrix: np.ndarray,
+                         ideal_scores: np.ndarray,
+                         max_clones: int,
+                         method: str = "mean") -> Tuple[float, Dict[int, int]]:
+        """
+        Find optimal metric cloning to minimize distance to ideal scores
+        
+        Args:
+            votes: Current votes (num_voters x num_metrics)
+            value_matrix: Project metrics (num_projects x num_metrics)
+            ideal_scores: Desired project scores (num_projects,)
+            max_clones: Maximum number of clones to create
+            method: Aggregation method ("mean" or "median")
+        Returns:
+            Tuple of (min_distance, dict of {metric_index: num_clones})
+        """
+        num_metrics = votes.shape[1]
+        min_distance = float('inf')
+        best_cloning = {}
+        
+        # Try all possible cloning combinations
+        for clone_counts in self._generate_clone_combinations(num_metrics, max_clones):
+            # Create expanded votes and value matrix
+            expanded_votes = self._expand_votes(votes, clone_counts)
+            expanded_value_matrix = self._expand_value_matrix(value_matrix, clone_counts)
+            
+            # Compute scores
+            weights = self.aggregate_votes(expanded_votes, method)
+            scores = self.compute_scores(expanded_value_matrix, weights)
+            
+            # Compute distance
+            distance = np.linalg.norm(scores - ideal_scores, ord=1)
+            
+            if distance < min_distance:
+                min_distance = distance
+                best_cloning = {i: count for i, count in enumerate(clone_counts) if count > 1}
+        
+        return min_distance, best_cloning
+
+    def _generate_clone_combinations(self, num_metrics: int, max_clones: int) -> List[List[int]]:
+        """Generate all possible cloning combinations"""
+        # This is a recursive generator for all possible cloning counts
+        # Each metric can be cloned 1 to max_clones times
+        if num_metrics == 1:
+            return [[i] for i in range(1, max_clones + 1)]
+        else:
+            return [
+                [i] + rest
+                for i in range(1, max_clones + 1)
+                for rest in self._generate_clone_combinations(num_metrics - 1, max_clones)
+            ]
+
+    def _expand_votes(self, votes: np.ndarray, clone_counts: List[int]) -> np.ndarray:
+        """Expand votes according to cloning counts"""
+        expanded_votes = []
+        for voter in votes:
+            expanded_voter = []
+            for i, count in enumerate(clone_counts):
+                if self.elicitation_method == ElicitationMethod.CUMULATIVE:
+                    expanded_voter.extend([voter[i] / count] * count)
+                else:
+                    expanded_voter.extend([voter[i]] * count)
+            expanded_votes.append(expanded_voter)
+        return np.array(expanded_votes)
+
+    def _expand_value_matrix(self, value_matrix: np.ndarray, clone_counts: List[int]) -> np.ndarray:
+        """Expand value matrix according to cloning counts"""
+        expanded_matrix = []
+        for project in value_matrix:
+            expanded_project = []
+            for i, count in enumerate(clone_counts):
+                expanded_project.extend([project[i]] * count)
+            expanded_matrix.append(expanded_project)
+        return np.array(expanded_matrix)
+
+    def manipulation(self,
+                    votes: np.ndarray,
+                    value_matrix: np.ndarray,
+                    ideal_scores: np.ndarray,
+                    method: str = "mean") -> Tuple[float, np.ndarray]:
+        """
+        Find optimal votes for each agent to minimize distance to their ideal scores
+        
+        Args:
+            votes: Current votes (num_voters x num_metrics)
+            value_matrix: Project metrics (num_projects x num_metrics)
+            ideal_scores: Desired project scores (num_projects,)
+            method: Aggregation method ("mean" or "median")
+        Returns:
+            Tuple of (min_distance, optimized_votes)
+        """
+        num_voters, num_metrics = votes.shape
+        optimized_votes = np.zeros_like(votes)
+        
+        for i in range(num_voters):
+            def objective(vote: np.ndarray) -> float:
+                # Create new votes with this voter's optimized vote
+                new_votes = np.copy(votes)
+                new_votes[i] = vote
+                
+                # Ensure cumulative constraints if needed
+                if self.elicitation_method == ElicitationMethod.CUMULATIVE:
+                    new_votes[i] = new_votes[i] / new_votes[i].sum()
+                
+                # Compute new weights and scores
+                weights = self.aggregate_votes(new_votes, method)
+                new_scores = self.compute_scores(value_matrix, weights)
+                
+                # L1 distance to ideal scores
+                return np.linalg.norm(new_scores - ideal_scores, ord=1)
+            
+            # Constraints and bounds based on elicitation method
+            if self.elicitation_method == ElicitationMethod.FRACTIONAL:
+                bounds = [(0, 1)] * num_metrics
+            elif self.elicitation_method == ElicitationMethod.CUMULATIVE:
+                bounds = [(0, 1)] * num_metrics
+                constraints = {'type': 'eq', 'fun': lambda x: np.sum(x) - 1}
+            elif self.elicitation_method == ElicitationMethod.APPROVAL:
+                bounds = [(0, 1)] * num_metrics
+            elif self.elicitation_method == ElicitationMethod.PLURALITY:
+                bounds = [(0, 1)] * num_metrics
+            
+            # Initial guess (current vote)
+            x0 = votes[i]
+            
+            # Optimize
+            if self.elicitation_method == ElicitationMethod.CUMULATIVE:
+                result = minimize(objective, x0,
+                                method='SLSQP',
+                                bounds=bounds,
+                                constraints=constraints)
+            else:
+                result = minimize(objective, x0,
+                                method='SLSQP',
+                                bounds=bounds)
+            
+            # Store optimized vote
+            optimized_votes[i] = result.x
+        
+        # Compute final distance with optimized votes
+        final_weights = self.aggregate_votes(optimized_votes, method)
+        final_scores = self.compute_scores(value_matrix, final_weights)
+        min_distance = np.linalg.norm(final_scores - ideal_scores, ord=1)
+        
+        return min_distance, optimized_votes
 
 # Example usage
 if __name__ == "__main__":
-    # Define metrics to track
-    metrics = [
-        "daily_users",
-        "transaction_volume",
-        "unique_wallets",
-        "tvl",
-        "developer_activity"
-    ]
-    num_projects = 100
-    num_voters = 300
-    total_funds = 10_000_000
+
+
+    metrics = ["daily_users", "transaction_volume", "unique_wallets"]
+    num_voters = 100
+    num_projects = 5
+    budget = 10.0
+
+
     
-    # Test different aggregation methods
-    for method in AggregationMethod:
-        print(f"\nTesting {method.value} aggregation:")
+    # Test different elicitation methods
+    for method in ElicitationMethod:
+        print(f"\nTesting {method.value} elicitation:")
         
         simulator = VotingSimulator(
-            total_funds=total_funds,
             num_voters=num_voters,
             metrics=metrics,
-            num_projects=num_projects,
-            aggregation_method=method
+            elicitation_method=method,
+            alpha=1.0
         )
         
-        # Simulate voting to determine metric weights
-        weights = simulator.simulate_voting()
-        print("Metric Weights:", weights)
+        # Generate votes
+        votes = simulator.generate_votes()
+        print("Sample votes:\n", votes[:3])
         
-        # Define metric ranges for random project generation
-        metric_ranges = {
-            "daily_users": (500, 2000),
-            "transaction_volume": (100000, 1000000),
-            "unique_wallets": (400, 1500),
-            "tvl": (1000000, 5000000),
-            "developer_activity": (10, 100)
-        }
-
-        # Create data directory if it doesn't exist
-    
-        os.makedirs('data/simulation_data/projects_metrics', exist_ok=True)
-        os.makedirs('data/simulation_data/fund_allocation', exist_ok=True)
+        # Aggregate votes
+        weights = simulator.aggregate_votes(votes, method="mean")
+        print("Aggregated weights:", weights)
         
-        # Generate random projects
-        projects_metrics = simulator.generate_projects_metrics(metric_ranges=metric_ranges)
+        # Generate random value matrix
+        value_matrix = np.random.uniform(0, 1, size=(num_projects, len(metrics)))
         
-        # Allocate funds based on metrics and weights
-        allocations = simulator.allocate_funds(projects_metrics)
-
-        # Save results to CSV files
-        projects_df = pd.DataFrame.from_dict(projects_metrics, orient='index')
-        projects_df.index.name = 'project'
-        projects_df.to_csv(f'data/simulation_data/projects_metrics/projects_metrics_{method.value}.csv')
+        # Compute project scores
+        scores = simulator.compute_scores(value_matrix, weights)
+        print("Project scores:", scores)
         
-        allocations_df = pd.DataFrame.from_dict(allocations, 
-                                              orient='index', 
-                                              columns=['allocation'])
-        allocations_df.index.name = 'project'
-        allocations_df.to_csv(f'data/simulation_data/fund_allocation/fund_allocation_{method.value}.csv')
-
-        print("\nFund Allocations (OP tokens):")
-        for project, amount in allocations.items():
-            print(f"{project}: {amount:,.0f}")
+        # Create ideal scores (random for example)
+        ideal_scores = np.random.uniform(0, 1, size=num_projects)
+        
+        # Run bribery optimization
+       
+        min_distance, optimized_votes = simulator.bribery_optimization(
+            votes, value_matrix, ideal_scores, budget)
+        
+        print(f"Minimum L1 distance: {min_distance}")
+        print("Original votes sample:\n", votes[:3])
+        print("Optimized votes sample:\n", optimized_votes[:3])
+        
+        # Test control by deletion
+        max_deletions = 1
+        del_distance, del_indices = simulator.control_by_deletion(
+            votes, value_matrix, ideal_scores, max_deletions)
+        print(f"\nControl by Deletion:")
+        print(f"Minimum L1 distance: {del_distance}")
+        print(f"Metrics to delete: {[metrics[i] for i in del_indices]}")
+        
+        # Test control by cloning
+        max_clones = 2
+        clone_distance, cloning = simulator.control_by_cloning(
+            votes, value_matrix, ideal_scores, max_clones)
+        print(f"\nControl by Cloning:")
+        print(f"Minimum L1 distance: {clone_distance}")
+        print(f"Cloning strategy: { {metrics[i]: f'x{count}' for i, count in cloning.items()} }") 
+        # Generate random value matrix
+        
