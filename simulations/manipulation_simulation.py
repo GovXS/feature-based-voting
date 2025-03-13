@@ -6,6 +6,8 @@ def run_manipulation_simulation(
         votes,
         value_matrix,
         ideal_scores,
+        elicitation="cumulative", 
+        aggregation="arithmetic_mean",
         metrics = ["daily_users", "transaction_volume", "unique_wallets"],
     num_voters = 100,
     num_projects = 5,
@@ -29,7 +31,7 @@ def run_manipulation_simulation(
     # Run manipulation optimization
     min_distance = manipulation(
         votes, value_matrix,
-        elicitation="cumulative", aggregation="arithmetic_mean"
+        elicitation, aggregation
     )
 
     # Print results

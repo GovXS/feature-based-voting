@@ -6,6 +6,8 @@ def run_bribery_simulation(
         votes,
         value_matrix,
         ideal_scores,
+        elicitation="cumulative", 
+        aggregation="arithmetic_mean",
         metrics = ["daily_users", "transaction_volume", "unique_wallets", "tvl"],
         num_voters = 100,
         num_projects = 200,
@@ -29,7 +31,7 @@ def run_bribery_simulation(
     # Run bribery optimization
     min_distance = bribery_optimization(
         votes, value_matrix, ideal_scores, budget,
-        elicitation="cumulative", aggregation="arithmetic_mean"
+        elicitation, aggregation
     )
 
     # Print results

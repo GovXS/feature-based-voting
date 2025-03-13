@@ -6,6 +6,8 @@ def run_deletion_simulation(
         votes,
         value_matrix,
         ideal_scores,
+        elicitation="cumulative", 
+        aggregation="arithmetic_mean",
         metrics = ["daily_users", "transaction_volume", "unique_wallets"],
     num_voters = 100,
     num_projects = 5
@@ -30,7 +32,7 @@ def run_deletion_simulation(
     # Run control by deletion
     min_distance = control_by_deletion(
         votes, value_matrix, ideal_scores,
-        elicitation="cumulative", aggregation="arithmetic_mean"
+        elicitation, aggregation
     )
 
     # Print results

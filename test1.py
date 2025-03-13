@@ -55,24 +55,35 @@ if __name__ == "__main__":
 
     # Create results directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_dir = os.path.join("results", f"sim_run_{timestamp}")
+    results_dir = os.path.join("results", f"test_run_{timestamp}")
     os.makedirs(results_dir, exist_ok=True)
 
 
-    
-
+     # Run simulations for each combination of elicitation and aggregation
     results = {}
-    print("Running Bribery Simulation...")
-    results["Bribery"] = run_bribery_simulation(votes, value_matrix, ideal_scores,  elicitation, aggregation,metrics,num_voters,num_projects,budget)
-    
-    print("Running Manipulation Simulation...")
-    results["Manipulation"]= run_manipulation_simulation(votes, value_matrix, ideal_scores,elicitation, aggregation,metrics,num_voters,num_projects)
-    
-    print("Running Deletion Simulation...")
-    results["Deletion"] = run_deletion_simulation(votes, value_matrix, ideal_scores,elicitation, aggregation,metrics,num_voters,num_projects)
-    
-    print("Running Cloning Simulation...")
-    results["Cloning"] = run_cloning_simulation(votes, value_matrix, ideal_scores,elicitation, aggregation,metrics,num_voters,num_projects)
+    for elicitation in [ElicitationMethod.CUMULATIVE, ElicitationMethod.FRACTIONAL, ElicitationMethod.APPROVAL]:
+        for aggregation in ["arithmetic_mean", "geometric_mean"]:
+            print(f"Running simulations for {elicitation} elicitation and {aggregation} aggregation...")
+
+            # Update simulator with current elicitation method
+            simulator.elicitation_method = elicitation
+
+            # Run bribery simulation
+            results[f"Bribery_{elicitation}_{aggregation}"] = run_bribery_simulation(
+                votes, value_matrix, ideal_scores,  elicitation, aggregation,metrics,num_voters,num_projects,budget)
+
+            # Run manipulation simulation
+            results[f"Manipulation_{elicitation.value}_{aggregation}"] = run_manipulation_simulation(
+                votes, value_matrix, ideal_scores,  elicitation, aggregation,metrics,num_voters,num_projects)
+
+            # Run deletion simulation
+            results[f"Deletion_{elicitation.value}_{aggregation}"] = run_deletion_simulation(
+                votes, value_matrix, ideal_scores,  elicitation, aggregation,metrics,num_voters,num_projects)
+
+            # Run cloning simulation
+            results[f"Cloning_{elicitation.value}_{aggregation}"] = run_cloning_simulation(
+               votes, value_matrix, ideal_scores,  elicitation, aggregation,metrics,num_voters,num_projects)
+
 
     sim_params = {
         "metrics": metrics,
