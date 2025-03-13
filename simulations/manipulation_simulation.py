@@ -2,11 +2,13 @@ import numpy as np
 from models.VotingModel import VotingSimulator, ElicitationMethod
 from models.Metric_based_optimization import manipulation
 
-def run_manipulation_simulation():
+def run_manipulation_simulation(
+        metrics = ["daily_users", "transaction_volume", "unique_wallets"],
+    num_voters = 100,
+    num_projects = 5,
+):
     # Simulation parameters
-    metrics = ["daily_users", "transaction_volume", "unique_wallets"]
-    num_voters = 100
-    num_projects = 5
+    
 
     # Initialize simulator
     simulator = VotingSimulator(

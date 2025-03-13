@@ -2,12 +2,12 @@ import numpy as np
 from models.VotingModel import VotingSimulator, ElicitationMethod
 from models.Metric_based_optimization import control_by_cloning
 
-def run_cloning_simulation():
-    # Simulation parameters
-    metrics = ["daily_users", "transaction_volume", "unique_wallets"]
-    num_voters = 100
-    num_projects = 200
-    max_clones = 2
+def run_cloning_simulation(
+        metrics = ["daily_users", "transaction_volume", "unique_wallets"],
+        num_voters = 100,
+        num_projects = 200,
+        ):
+
 
     # Initialize simulator
     simulator = VotingSimulator(

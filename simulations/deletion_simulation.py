@@ -2,13 +2,14 @@ import numpy as np
 from models.VotingModel import VotingSimulator, ElicitationMethod
 from models.Metric_based_optimization import control_by_deletion
 
-def run_deletion_simulation():
-    # Simulation parameters
-    metrics = ["daily_users", "transaction_volume", "unique_wallets"]
-    num_voters = 100
+def run_deletion_simulation(
+        metrics = ["daily_users", "transaction_volume", "unique_wallets"],
+    num_voters = 100,
     num_projects = 5
-    max_deletions = 1
-    budget = 10000
+):
+    # Simulation parameters
+    
+   
 
     # Initialize simulator
     simulator = VotingSimulator(

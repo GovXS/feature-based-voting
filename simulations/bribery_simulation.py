@@ -2,12 +2,13 @@ import numpy as np
 from models.VotingModel import VotingSimulator, ElicitationMethod
 from models.Metric_based_optimization import bribery_optimization
 
-def run_bribery_simulation():
-    # Simulation parameters
-    metrics = ["daily_users", "transaction_volume", "unique_wallets", "tvl"]
-    num_voters = 100
-    num_projects = 200
-    budget = 10000.0
+def run_bribery_simulation(
+        metrics = ["daily_users", "transaction_volume", "unique_wallets", "tvl"],
+        num_voters = 100,
+        num_projects = 200,
+        budget = 10000.0
+    ):
+   
 
     # Initialize simulator
     simulator = VotingSimulator(
