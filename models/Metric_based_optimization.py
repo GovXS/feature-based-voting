@@ -11,6 +11,8 @@ def bribery_optimization(votes, value_matrix, scores, budget, elicitation, aggre
     n, k = votes.shape  # Number of voters and features
     m = value_matrix.shape[0]  # Number of projects
 
+    imp_prime = cp.Variable((n, k))
+
     # Decision variables
     z = cp.Variable((n, k), nonneg=True)  # Absolute bribery cost per voter-feature
     score_prime = cp.Variable(m)  # New bribed scores
@@ -117,6 +119,7 @@ def manipulation(votes, value_matrix, elicitation,aggregation):
     - The manipulated vote vector for agent `agent_index`.
     """
     n, k = votes.shape  # Number of voters and features
+    imp_prime = cp.Variable((n, k))
     m = value_matrix.shape[0]  # Number of projects
     random_agent_index = np.random.choice(n)
     score_prime = cp.Variable(m)  # New manipulated scores

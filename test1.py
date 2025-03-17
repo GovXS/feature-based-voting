@@ -9,7 +9,7 @@ from simulations.manipulation_simulation import run_manipulation_simulation
 from simulations.deletion_simulation import run_deletion_simulation
 from simulations.cloning_simulation import run_cloning_simulation
 from models.VotingModel import VotingSimulator, ElicitationMethod
-import numpy as np
+
 
 def save_simulation_results(results_dir, sim_params, votes, value_matrix, ideal_scores, results):
     # Convert sim_params to a format that pd.DataFrame.from_dict can handle
