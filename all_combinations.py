@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     # Create results directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_dir = os.path.join("results", f"test_run_{timestamp}")
+    results_dir = os.path.join("results", "all_combinations", f"run_{timestamp}")
     os.makedirs(results_dir, exist_ok=True)
 
 
