@@ -8,6 +8,7 @@ def run_cloning_simulation(
         ideal_scores,
         elicitation="cumulative", 
         aggregation="arithmetic_mean",
+        budget=1,
         metrics = ["daily_users", "transaction_volume", "unique_wallets"],
         num_voters = 100,
         num_projects = 200,
@@ -29,7 +30,7 @@ def run_cloning_simulation(
 
     # Run control by cloning
     min_distance = control_by_cloning(
-        votes, value_matrix, ideal_scores, 
+        votes, value_matrix, ideal_scores, budget,
         elicitation, aggregation
     )
 

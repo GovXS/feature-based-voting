@@ -36,7 +36,9 @@ if __name__ == "__main__":
 
     num_voters = 100
     num_projects = 200
-    budget = 10000.0
+    bribery_budget = 10000.0
+    cloning_budget = 2
+    deletion_budget = 1
     elicitation =ElicitationMethod.CUMULATIVE,
     aggregation = "arithmetic_mean",
 
@@ -70,26 +72,28 @@ if __name__ == "__main__":
 
             # Run bribery simulation
             results[f"Bribery_{elicitation.value}_{aggregation}"] = run_bribery_simulation(
-                votes, value_matrix, ideal_scores,  elicitation, aggregation,metrics,num_voters,num_projects,budget)
+                votes, value_matrix, ideal_scores,bribery_budget,  elicitation, aggregation, metrics, num_voters, num_projects)
 
             # Run manipulation simulation
             results[f"Manipulation_{elicitation.value}_{aggregation}"] = run_manipulation_simulation(
-                votes, value_matrix, ideal_scores,  elicitation, aggregation,metrics,num_voters,num_projects)
+                votes, value_matrix, ideal_scores,  elicitation, aggregation, metrics, num_voters, num_projects)
 
             # Run deletion simulation
             results[f"Deletion_{elicitation.value}_{aggregation}"] = run_deletion_simulation(
-                votes, value_matrix, ideal_scores,  elicitation, aggregation,metrics,num_voters,num_projects)
+                votes, value_matrix, ideal_scores,  elicitation, aggregation, deletion_budget, metrics, num_voters, num_projects)
 
             # Run cloning simulation
             results[f"Cloning_{elicitation.value}_{aggregation}"] = run_cloning_simulation(
-               votes, value_matrix, ideal_scores,  elicitation, aggregation,metrics,num_voters,num_projects)
+               votes, value_matrix, ideal_scores,  elicitation, aggregation,cloning_budget, metrics, num_voters, num_projects)
 
 
     sim_params = {
         "metrics": metrics,
         "num_voters": num_voters,
         "num_projects": num_projects,
-        "budget": budget,
+        "budget": bribery_budget,
+        "cloning_budget": cloning_budget,
+        "deletion_budget": deletion_budget,
        
     }
     save_simulation_results(results_dir, sim_params, votes, value_matrix, ideal_scores, results)

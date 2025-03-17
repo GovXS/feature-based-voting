@@ -36,7 +36,9 @@ if __name__ == "__main__":
 
     num_voters = 100
     num_projects = 200
-    budget = 10000.0
+    bribery_budget = 10000.0
+    cloning_budget = 2
+    deletion_budget = 1
     elicitation =ElicitationMethod.CUMULATIVE,
     aggregation = "arithmetic_mean",
 
@@ -51,6 +53,8 @@ if __name__ == "__main__":
     # Generate data
     votes = simulator.generate_votes()
     value_matrix = np.random.uniform(0, 1, size=(num_projects, len(metrics)))
+
+    
     ideal_scores = np.random.uniform(0, 1, size=num_projects)
 
     # Create results directory
@@ -63,22 +67,24 @@ if __name__ == "__main__":
 
     results = {}
     print("Running Bribery Simulation...")
-    results["Bribery"] = run_bribery_simulation(votes, value_matrix, ideal_scores,  elicitation, aggregation,metrics,num_voters,num_projects,budget)
+    results["Bribery"] = run_bribery_simulation(votes, value_matrix, ideal_scores,  elicitation, aggregation,bribery_budget,metrics,num_voters,num_projects)
     
     print("Running Manipulation Simulation...")
     results["Manipulation"]= run_manipulation_simulation(votes, value_matrix, ideal_scores,elicitation, aggregation,metrics,num_voters,num_projects)
     
     print("Running Deletion Simulation...")
-    results["Deletion"] = run_deletion_simulation(votes, value_matrix, ideal_scores,elicitation, aggregation,metrics,num_voters,num_projects)
+    results["Deletion"] = run_deletion_simulation(votes, value_matrix, ideal_scores,elicitation, aggregation,deletion_budget,metrics,num_voters,num_projects)
     
     print("Running Cloning Simulation...")
-    results["Cloning"] = run_cloning_simulation(votes, value_matrix, ideal_scores,elicitation, aggregation,metrics,num_voters,num_projects)
+    results["Cloning"] = run_cloning_simulation(votes, value_matrix, ideal_scores,elicitation, aggregation,cloning_budget, metrics,num_voters,num_projects)
 
     sim_params = {
         "metrics": metrics,
         "num_voters": num_voters,
         "num_projects": num_projects,
-        "budget": budget,
+        "budget": bribery_budget,
+        "cloning_budget": cloning_budget,
+        "deletion_budget": deletion_budget,
        
     }
     save_simulation_results(results_dir, sim_params, votes, value_matrix, ideal_scores, results)

@@ -8,10 +8,11 @@ def run_bribery_simulation(
         ideal_scores,
         elicitation="cumulative", 
         aggregation="arithmetic_mean",
+        budget = 10000.0,
         metrics = ["daily_users", "transaction_volume", "unique_wallets", "tvl"],
         num_voters = 100,
         num_projects = 200,
-        budget = 10000.0
+        
     ):
    
 

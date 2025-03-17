@@ -211,7 +211,7 @@ def generate_ranking_matrix(imp):
     return ranking
 
 def compute_aggregated_importance(imp, aggregation):
-    """Compute aggregated importance svector using mean or median."""
+    """Compute aggregated importance vector using mean or median."""
     return np.mean(imp, axis=0) if aggregation == "mean" else np.median(imp, axis=0)
 
 def compute_scores(imp_agg, val):
@@ -240,44 +240,25 @@ def transfer_votes_after_deletion(imp, ranking_matrix, deleted_features):
 
     return new_imp[:, sorted(set(range(k)) - deleted_features)]
 
-def simulated_annealing_general(
-    initial_state, compute_l1, max_iter=100, budget=1, initial_temperature=100, cooling_rate=0.99
-):
-    """Unified simulated annealing for both feature deletion (sets) and feature cloning (dicts)."""
-    if isinstance(initial_state, set):
-        # Feature deletion case
-        feature_list = sorted(list(initial_state))
-        best_solution = set(random.sample(feature_list, min(len(feature_list), max_iter // 10)))
-    elif isinstance(initial_state, dict):
-        # Feature cloning case
-        best_solution = initial_state.copy()
-    else:
-        raise ValueError("Invalid state type for simulated annealing.")
-
+def simulated_annealing(feature_set, compute_l1, max_iter=100, initial_temperature=100, cooling_rate=0.99):
+    """Simulated annealing to find the best feature subset minimizing L1 distance."""
+    feature_list = sorted(list(feature_set))  # Convert set to list
+    best_solution = set(random.sample(feature_list, min(len(feature_list), max_iter // 10)))
     best_l1 = compute_l1(best_solution)
+
     temp = initial_temperature
     iteration = 0
 
     while temp > 1 and iteration < max_iter:
-        if isinstance(best_solution, set):
-            # Mutate set (for deletion)
-            new_solution = best_solution.copy()
-            if len(new_solution) > 1 and random.random() < 0.5:
-                new_solution.remove(random.choice(list(new_solution)))
-            else:
-                new_solution.add(random.choice(feature_list))
-        elif isinstance(best_solution, dict):
-            # Mutate dictionary (for cloning)
-            new_solution = best_solution.copy()
-            if random.random() < 0.5 and sum(new_solution.values()) > 0:  # Remove clone
-                f = random.choice([f for f in new_solution if new_solution[f] > 0])
-                new_solution[f] -= 1
-            else:  # Add clone
-                f = random.choice(list(new_solution.keys()))
-                if sum(new_solution.values()) < budget:
-                    new_solution[f] += 1
+        new_solution = best_solution.copy()
+
+        if len(new_solution) > 1 and random.random() < 0.5:
+            new_solution.remove(random.choice(list(new_solution)))
+        else:
+            new_solution.add(random.choice(feature_list))
 
         new_l1 = compute_l1(new_solution)
+
         if new_l1 < best_l1 or random.random() < np.exp((best_l1 - new_l1) / temp):
             best_solution = new_solution
             best_l1 = new_l1
@@ -288,8 +269,10 @@ def simulated_annealing_general(
     return best_solution, best_l1
 
 
-def control_by_deletion(imp, val, ideal_scores, budget, elicitation, aggregation):
-    """Simulated annealing for control by deletion with budget constraint."""
+
+def control_by_deletion(imp, val, ideal_scores, elicitation, aggregation):
+    """Simulated annealing for control by deletion."""
+    start_time = time.time()
     k = imp.shape[1]
     best_l1 = float('inf')
     remaining_features = set(range(k))
@@ -298,10 +281,7 @@ def control_by_deletion(imp, val, ideal_scores, budget, elicitation, aggregation
         ranking_matrix = generate_ranking_matrix(imp)
 
     def compute_l1(deleted_features):
-        """Compute L1 distance given a set of deleted features within budget."""
-        if len(deleted_features) > budget:
-            return best_l1  # Ignore solutions exceeding budget
-
+        """Compute L1 distance given a set of deleted features."""
         remaining = sorted(remaining_features - deleted_features)
         imp_new = imp[:, remaining]
         val_new = val[:, remaining]
@@ -316,76 +296,52 @@ def control_by_deletion(imp, val, ideal_scores, budget, elicitation, aggregation
         new_scores = compute_scores(imp_agg_new, val_new)
         return l1_distance(new_scores, ideal_scores)
 
-    deleted_features, best_l1 = simulated_annealing_general(
-        remaining_features, compute_l1, max_iter=200, budget=budget,
-    )
+    deleted_features, best_l1 = simulated_annealing(remaining_features, compute_l1, max_iter=200)
 
     return best_l1
 
-
-def control_by_cloning(imp, val, ideal_scores, budget, elicitation, aggregation):
-    """Simulated annealing for control by cloning with budget constraint."""
+def control_by_cloning(imp, val, ideal_scores,elicitation, aggregation):
+    """Simulated annealing for control by cloning."""
+    start_time = time.time()
     n, k = imp.shape
     best_l1 = float('inf')
-
-    # Initialize a cloning plan as a dictionary {feature: num_clones}, initially no clones
-    initial_cloning_plan = {f: 0 for f in range(k)}
+    feature_set = set(range(k))
 
     if elicitation == "plurality":
         ranking_matrix = generate_ranking_matrix(imp)
 
-    def compute_l1(cloning_plan):
-        """Compute L1 distance given a cloning plan within budget."""
-        num_clones = sum(cloning_plan.values())  # Total clones added
-
-        # Enforce budget constraint: sum of all clones should not exceed `budget`
-        if num_clones > budget:
-            return best_l1  # Ignore solutions exceeding budget
-
+    def compute_l1(cloned_features):
+        """Compute L1 distance given a set of cloned features."""
         imp_new = np.copy(imp)
         val_new = np.copy(val)
 
-        # Clone features according to the plan
-        for f, clone_count in cloning_plan.items():
-            for _ in range(clone_count):
-                imp_new = np.column_stack((imp_new, imp[:, f]))  # Clone feature
-                val_new = np.column_stack((val_new, val[:, f]))
+       # Convert set to list of integers (Change 1)
+        cloned_features = list(cloned_features)
+    
+        num_clones = len(cloned_features)
 
-        # Apply cloning rules based on elicitation method
-        if elicitation == "fractional":
-            pass  # No modification needed, clones copy original exactly.
+        for f in cloned_features:
+            imp_new = np.column_stack((imp_new, imp[:, f]))  # Clone feature
+            val_new = np.column_stack((val_new, val[:, f]))
 
-        elif elicitation == "cumulative":
-            for f, clone_count in cloning_plan.items():
-                if clone_count > 0:  # ✅ Ensure cloning actually occurs
-                    total_parts = 1 + clone_count
-                    imp_new[:, f] /= total_parts
-                    cloned_values = np.tile(imp[:, f] / total_parts, (clone_count, 1)).T
-                    imp_new[:, -clone_count:] = cloned_values  # Assign to new clones
-
-
-        elif elicitation == "approval":
-            for f, clone_count in cloning_plan.items():
-                imp_new[:, -clone_count:] = (imp[:, f] == 1).astype(int)  # Clones inherit approval votes
+        if elicitation == "cumulative":
+            imp_new[:, cloned_features] /= (1 + num_clones)  # Normalize original feature
+            #Change 2
+            #imp_new[:, -num_clones:] = imp[:, list(cloned_features)][:, np.newaxis] / (1 + num_clones)  # Normalize clones
+            imp_new[:, -num_clones:] = imp[:, cloned_features] / (1 + num_clones)  # Remove np.newaxis
 
         elif elicitation == "plurality":
-            for f, clone_count in cloning_plan.items():
-                for i in range(n):
-                    if imp[i, f] == 1:
-                        move_to_clone = np.random.randint(0, clone_count + 1)
-                        if move_to_clone > 0:
-                            imp_new[i, f] = 0
-                            imp_new[i, -clone_count + move_to_clone - 1] = 1  # Shift to a clone
+            for i in range(n):
+                if imp[i, f] == 1:
+                    move_to_clone = np.random.choice([True, False])
+                    if move_to_clone:
+                        imp_new[i, f] = 0
+                        imp_new[i, -num_clones:] = 1
 
         imp_agg_new = compute_aggregated_importance(imp_new, aggregation)
         new_scores = compute_scores(imp_agg_new, val_new)
         return l1_distance(new_scores, ideal_scores)
 
-    cloned_plan, best_l1 = simulated_annealing_general(
-        initial_cloning_plan, compute_l1, max_iter=200, budget=budget,
-    )
+    cloned_features, best_l1 = simulated_annealing(feature_set, compute_l1, max_iter=200)
 
     return best_l1
-
-
-
