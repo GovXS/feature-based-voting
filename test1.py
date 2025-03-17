@@ -69,7 +69,7 @@ if __name__ == "__main__":
             simulator.elicitation_method = elicitation
 
             # Run bribery simulation
-            results[f"Bribery_{elicitation}_{aggregation}"] = run_bribery_simulation(
+            results[f"Bribery_{elicitation.value}_{aggregation}"] = run_bribery_simulation(
                 votes, value_matrix, ideal_scores,  elicitation, aggregation,metrics,num_voters,num_projects,budget)
 
             # Run manipulation simulation
