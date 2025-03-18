@@ -39,7 +39,7 @@ if __name__ == "__main__":
     num_projects = 200
     bribery_budget = 10000.0
     cloning_budget = 1
-    deletion_budget = 10
+    deletion_budget = 2
     alpha_values = [0.5, 1.0, 2.0, 5.0]  # Test different alpha values
 
 # Create results directory

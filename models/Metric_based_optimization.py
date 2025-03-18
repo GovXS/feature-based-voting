@@ -5,7 +5,6 @@ import time
 import itertools
 import random
 
-  
 def bribery_optimization(votes, value_matrix, scores, budget, elicitation, aggregation):
 
     n, k = votes.shape  # Number of voters and features
