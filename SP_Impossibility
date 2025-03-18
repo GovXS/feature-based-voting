@@ -1,0 +1,122 @@
+from z3 import *
+
+# Function to compute the L1 norm between two scoring vectors
+def l1_norm(score1, score2):
+    d_j = [Int(f'd_{j}') for j in range(3)]
+    constraints = []
+    
+    for j in range(3):
+        constraints.append(d_j[j] >= score1[j] - score2[j])
+        constraints.append(d_j[j] >= score2[j] - score1[j])
+
+    return Sum(d_j), constraints
+
+# Strategy-Proofness Constraint
+def manipulation_constraint(solver, val, imp, agg, agg_prime):
+    b_j = [Int(f'b_{j}') for j in range(3)]
+    b_prime_j = [Int(f'b_prime_{j}') for j in range(3)]
+    constraints = []
+
+    for j in range(3):
+        original_score = Sum([val[j][f] * imp[0][f] for f in range(3)])
+        agg_score = Sum([val[j][f] * agg[f] for f in range(3)])
+        agg_prime_score = Sum([val[j][f] * agg_prime[f] for f in range(3)])
+
+        constraints.append(b_j[j] >= original_score - agg_score)
+        constraints.append(b_j[j] >= agg_score - original_score)
+        constraints.append(b_prime_j[j] >= original_score - agg_prime_score)
+        constraints.append(b_prime_j[j] >= agg_prime_score - original_score)
+
+    solver.add(constraints)
+    solver.add(Sum(b_j) <= Sum(b_prime_j))  # Ensuring manipulation does not improve outcome
+
+    return solver
+
+# Pareto Efficiency Constraint
+def pareto_optimality(solver, val, imp, agg_name, p_name):
+    agg = [Int(f'{agg_name}_{f}') for f in range(3)]
+    p = [Int(f'{p_name}_{f}') for f in range(3)]
+
+    for f in range(3):
+        solver.add(agg[f] >= 0)
+        solver.add(p[f] >= 0)
+
+    # Compute scores for each voter
+    scores_agg = [[Sum([val[j][f] * imp[i][f] for f in range(3)]) for j in range(3)] for i in range(3)]
+    scores_p = [[Sum([val[j][f] * imp[i][f] for f in range(3)]) for j in range(3)] for i in range(3)]
+
+    # Define L1 norms
+    d_agg = [l1_norm(scores_agg[i], agg)[0] for i in range(3)]
+    d_p = [l1_norm(scores_p[i], p)[0] for i in range(3)]
+
+    exists_p = Exists(p, And(
+        ForAll([Int(f'i_{idx}') for idx in range(3)], 
+               lambda i: d_agg[i] >= d_p[i]),  # All agents at least as good
+        Exists([Int(f'j_{idx}') for idx in range(3)], 
+               lambda j: d_agg[j] > d_p[j])  # At least one agent strictly better
+    ))
+
+    solver.add(Not(exists_p))  # Ensuring no such p exists
+    return solver
+
+# Check satisfiability with Z3 solver
+def check_satisfiability(val, imp):
+    solver = Solver()
+
+    # Define integer variables for aggregation vectors
+    agg = [Int(f'agg_{f}') for f in range(3)]
+    agg_prime = [Int(f'agg_prime_{f}') for f in range(3)]
+
+    for f in range(3):
+        solver.add(agg[f] >= 0)
+        solver.add(agg_prime[f] >= 0)
+
+    # Construct manipulated importance matrix imp'
+    imp_prime_0 = [Int(f'imp_prime_0_{f}') for f in range(3)]
+    imp_prime = [[imp[i][f] if i != 0 else imp_prime_0[f] for f in range(3)] for i in range(3)]
+
+    for f in range(3):
+        solver.add(imp_prime_0[f] >= 0)
+
+    # Constraint 1: Resistance to Manipulation
+    solver = manipulation_constraint(solver, val, imp, agg, agg_prime)
+
+    # Constraint 2: Pareto Optimality under Truthful Votes
+    solver = pareto_optimality(solver, val, imp, 'agg', 'p')
+
+    # Constraint 3: Pareto Optimality under Manipulated Votes
+    solver = pareto_optimality(solver, val, imp_prime, 'agg_prime', 'p_prime')
+
+    # Check satisfiability
+    if solver.check() != sat:
+        print("No solution found!")
+        return False, None, None, None
+
+    model = solver.model()
+    agg_values = [model.eval(agg[f]).as_long() for f in range(3)]
+    agg_prime_values = [model.eval(agg_prime[f]).as_long() for f in range(3)]
+    imp_prime_values = [model.eval(imp_prime_0[f]).as_long() for f in range(3)]
+
+    return True, agg_values, agg_prime_values, imp_prime_values
+
+
+# Generate random instance
+def generate_matrices(target_sum=15):
+    val = np.random.randint(1, 11, size=(3, 3))
+    imp = np.random.randint(1, 11, size=(3, 3))
+    return val, imp
+
+val, imp = generate_matrices()
+print("Generated instance:")
+print("val =", val)
+print("imp =", imp)
+
+satisfiable, agg_solution, agg_prime_solution, imp_prime_solution = check_satisfiability(val, imp)
+
+if not satisfiable:
+    print("Impossibility confirmed! No aggregation rule satisfies both properties.")
+else:
+    print("A solution was found.")
+    print("agg =", agg_solution)
+    print("agg_prime =", agg_prime_solution)
+    print("imp'_0 =", imp_prime_solution)
