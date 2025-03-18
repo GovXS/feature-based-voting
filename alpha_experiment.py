@@ -35,12 +35,12 @@ def save_simulation_results(results_dir, sim_params, votes, value_matrix, ideal_
 if __name__ == "__main__":
     # Define metrics and parameters
     metrics = ["daily_users", "transaction_volume", "unique_wallets", "tvl"]
-    num_voters = 100
-    num_projects = 200
+    num_voters = 3
+    num_projects = 4
     bribery_budget = 10000.0
-    cloning_budget = 2
-    deletion_budget = 1
-    alpha_values = [0.5, 1.0, 2.0, 5.0]  # Test different alpha values
+    cloning_budget = 3
+    deletion_budget = 3
+    alpha_values = [0.1, 0.5,1.0, 2.0, 5.0]  # Test different alpha values
 
 # Create results directory
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

@@ -38,7 +38,7 @@ if __name__ == "__main__":
     num_projects = 200
     bribery_budget = 10000.0
     cloning_budget = 2
-    deletion_budget = 1
+    deletion_budget = 2
     elicitation =ElicitationMethod.CUMULATIVE,
     aggregation = "arithmetic_mean",
 

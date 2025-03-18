@@ -34,11 +34,11 @@ def save_simulation_results(results_dir, sim_params, votes, value_matrix, ideal_
 if __name__ == "__main__":
     metrics = ["daily_users", "transaction_volume", "unique_wallets", "tvl"]
 
-    num_voters = 100
-    num_projects = 200
+    num_voters = 3
+    num_projects = 4
     bribery_budget = 10000.0
-    cloning_budget = 2
-    deletion_budget = 1
+    cloning_budget = 3
+    deletion_budget = 3
     elicitation =ElicitationMethod.CUMULATIVE,
     aggregation = "arithmetic_mean",
 
@@ -61,6 +61,8 @@ if __name__ == "__main__":
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     results_dir = os.path.join("results", "main", f"run_{timestamp}")
     os.makedirs(results_dir, exist_ok=True)
+
+    print("val matrix:",value_matrix)
 
 
     
