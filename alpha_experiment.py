@@ -38,8 +38,8 @@ if __name__ == "__main__":
     num_voters = 100
     num_projects = 200
     bribery_budget = 10000.0
-    cloning_budget = 1
-    deletion_budget = 2
+    cloning_budget = 2
+    deletion_budget = 1
     alpha_values = [0.5, 1.0, 2.0, 5.0]  # Test different alpha values
 
 # Create results directory

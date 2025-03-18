@@ -346,6 +346,32 @@ def simulated_annealing_general(
 
     return best_solution, best_l1
 
+def compute_l1_deletion(deleted_features, imp, val, ranking_matrix, elicitation, aggregation, ideal_scores):
+    """Compute L1 distance for deletion scenario."""
+
+    remaining_features = sorted(set(range(imp.shape[1])) - deleted_features)
+
+    if not remaining_features:  # If all features are deleted, return maximum L1 distance
+        return float("inf")
+
+    imp_new = imp[:, remaining_features]
+    val_new = val[:, remaining_features]
+
+    if elicitation == "plurality":
+        imp_new = transfer_votes_after_deletion(imp, ranking_matrix, deleted_features)
+
+    elif elicitation == "cumulative":
+        row_sum_before = np.sum(imp[0])  # Store initial sum
+        imp_new = imp_new / np.sum(imp_new, axis=1, keepdims=True)
+        imp_new *= row_sum_before  # Restore original sum after normalization
+
+    imp_agg_new = compute_aggregated_importance(imp_new, aggregation)
+    new_scores = compute_scores(imp_agg_new, val_new)
+
+    return l1_distance(new_scores, ideal_scores)
+
+
+
 
 def control_by_deletion(imp, val, ideal_scores, budget, elicitation, aggregation):
     """Simulated annealing for control by deletion with budget constraint."""
@@ -365,6 +391,7 @@ def control_by_deletion(imp, val, ideal_scores, budget, elicitation, aggregation
     )
     return best_l1
 
+
 def control_by_cloning(imp, val, ideal_scores, budget, elicitation, aggregation):
     """Simulated annealing for control by cloning with budget constraint."""
     if elicitation == "cumulative" and aggregation in {"mean", "median"}:
@@ -383,3 +410,50 @@ def control_by_cloning(imp, val, ideal_scores, budget, elicitation, aggregation)
         max_iter=500
     )
     return best_l1
+
+
+def compute_l1_cloning(cloning_plan, imp, val, elicitation, aggregation, ideal_scores):
+    """Compute L1 distance for cloning scenario."""
+
+    imp_new = np.copy(imp)
+    val_new = np.copy(val)
+    row_sum_before = np.sum(imp[0])  # Store initial sum
+
+    for f, clone_count in cloning_plan.items():
+        for _ in range(clone_count):
+            imp_new = np.column_stack((imp_new, imp[:, f]))
+            val_new = np.column_stack((val_new, val[:, f]))
+
+    if elicitation == "fractional":
+        pass  # Clones receive the same weight as the original metric
+
+    elif elicitation == "cumulative":
+        for f, clone_count in cloning_plan.items():
+            if clone_count > 0:
+                total_parts = 1 + clone_count
+                imp_new[:, f] /= total_parts
+                cloned_values = np.tile(imp[:, f] / total_parts, (clone_count, 1)).T
+                imp_new[:, -clone_count:] = cloned_values
+
+        imp_new = imp_new / np.sum(imp_new, axis=1, keepdims=True)
+        imp_new *= row_sum_before  # Restore original sum after normalization
+
+    elif elicitation == "approval":
+        for f, clone_count in cloning_plan.items():
+            for _ in range(clone_count):
+                imp_new = np.column_stack((imp_new, (imp[:, f] == 1).astype(int)))
+
+    elif elicitation == "plurality":
+        for f, clone_count in cloning_plan.items():
+            for i in range(imp.shape[0]):
+                if imp[i, f] == 1:
+                    move_to_clone = np.random.randint(0, clone_count + 1)
+                    if move_to_clone > 0:
+                        imp_new[i, f] = 0
+                        imp_new[i, -clone_count + move_to_clone - 1] = 1  # Assign to a clone
+
+    imp_agg_new = compute_aggregated_importance(imp_new, aggregation)
+    new_scores = compute_scores(imp_agg_new, val_new)
+
+    return l1_distance(new_scores, ideal_scores)
+
