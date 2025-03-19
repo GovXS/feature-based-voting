@@ -15,8 +15,6 @@ from config import experiments_config
 from utils.util import save_simulation_results
 
 
-
-
 elicitation_methods = [ElicitationMethod.CUMULATIVE, ElicitationMethod.FRACTIONAL, ElicitationMethod.APPROVAL]
 aggregation_methods = ["arithmetic_mean", "median"]
 
