@@ -1,5 +1,18 @@
 import numpy as np
-import Tuple
+
+from typing import Dict, List, Tuple
+from enum import Enum
+from scipy.stats import norm
+from scipy.optimize import minimize
+from itertools import combinations
+
+
+class ElicitationMethod(Enum):
+    FRACTIONAL = "fractional"  # Each vote between 0 and 1
+    CUMULATIVE = "cumulative"  # Sum of votes equals 1
+    APPROVAL = "approval"      # Binary (0 or 1)
+    PLURALITY = "plurality"    # Single 1, others 0
+
 
 def bribery_optimization(self,
                            votes: np.ndarray,
@@ -61,7 +74,7 @@ def bribery_optimization(self,
         
         return result.fun, optimal_votes
 
-    def control_by_deletion(self,
+def control_by_deletion(self,
                           votes: np.ndarray,
                           value_matrix: np.ndarray,
                           ideal_scores: np.ndarray,
@@ -111,7 +124,7 @@ def bribery_optimization(self,
         
         return min_distance, best_deletion
 
-    def control_by_cloning(self,
+def control_by_cloning(self,
                          votes: np.ndarray,
                          value_matrix: np.ndarray,
                          ideal_scores: np.ndarray,
@@ -152,7 +165,7 @@ def bribery_optimization(self,
         
         return min_distance, best_cloning
 
-    def _generate_clone_combinations(self, num_metrics: int, max_clones: int) -> List[List[int]]:
+def _generate_clone_combinations(self, num_metrics: int, max_clones: int) -> List[List[int]]:
         """Generate all possible cloning combinations"""
         # This is a recursive generator for all possible cloning counts
         # Each metric can be cloned 1 to max_clones times
@@ -165,7 +178,7 @@ def bribery_optimization(self,
                 for rest in self._generate_clone_combinations(num_metrics - 1, max_clones)
             ]
 
-    def _expand_votes(self, votes: np.ndarray, clone_counts: List[int]) -> np.ndarray:
+def _expand_votes(self, votes: np.ndarray, clone_counts: List[int]) -> np.ndarray:
         """Expand votes according to cloning counts"""
         expanded_votes = []
         for voter in votes:
@@ -178,7 +191,7 @@ def bribery_optimization(self,
             expanded_votes.append(expanded_voter)
         return np.array(expanded_votes)
 
-    def _expand_value_matrix(self, value_matrix: np.ndarray, clone_counts: List[int]) -> np.ndarray:
+def _expand_value_matrix(self, value_matrix: np.ndarray, clone_counts: List[int]) -> np.ndarray:
         """Expand value matrix according to cloning counts"""
         expanded_matrix = []
         for project in value_matrix:
@@ -188,7 +201,7 @@ def bribery_optimization(self,
             expanded_matrix.append(expanded_project)
         return np.array(expanded_matrix)
 
-    def manipulation(self,
+def manipulation(self,
                     votes: np.ndarray,
                     value_matrix: np.ndarray,
                     ideal_scores: np.ndarray,

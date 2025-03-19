@@ -63,8 +63,6 @@ if __name__ == "__main__":
     os.makedirs(results_dir, exist_ok=True)
 
     print("val matrix:",value_matrix)
-
-
     
 
     results = {}
