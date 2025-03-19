@@ -61,6 +61,17 @@ num_voters = 300
 metric_ranges = 10000
 ```
 
+# Experiments
 
+## Strategic Voting by Projects
+
+Instead of voters manipulating, projects modify their feature values to get better rankings.
+Why is it Important?
+In retroactive funding, projects may inflate metrics to get higher funding.
+It tests whether project rankings remain fair under strategic feature adjustments.
+How to Implement?
+Select a few projects.
+Modify their feature values within a reasonable range (e.g., increase by 10%).
+Compare score changes before and after modification.
 
 

@@ -4,58 +4,29 @@ import os
 import pandas as pd
 from datetime import datetime
 from models.VotingModel import VotingSimulator, ElicitationMethod
-from simulations.bribery_simulation import run_bribery_simulation
-from simulations.manipulation_simulation import run_manipulation_simulation
-from simulations.deletion_simulation import run_deletion_simulation
-from simulations.cloning_simulation import run_cloning_simulation
+
 from models.VotingModel import VotingSimulator, ElicitationMethod
 import numpy as np
-
-def save_simulation_results(results_dir, sim_params, votes, value_matrix, ideal_scores, results):
-    # Convert sim_params to a format that pd.DataFrame.from_dict can handle
-    sim_params_cleaned = {k: str(v) if isinstance(v, (list, dict)) else v for k, v in sim_params.items()}
-
-    # Save simulation parameters
-    pd.DataFrame.from_dict(sim_params_cleaned, orient="index", columns=["Value"]).to_csv(os.path.join(results_dir, "sim_params.csv"))
-
-    # Save votes
-    pd.DataFrame(votes).to_csv(os.path.join(results_dir, "votes.csv"), index=False)
-
-    # Save value matrix
-    pd.DataFrame(value_matrix).to_csv(os.path.join(results_dir, "value_matrix.csv"), index=False)
-
-    # Save ideal scores
-    pd.DataFrame(ideal_scores, columns=["ideal_scores"]).to_csv(os.path.join(results_dir, "ideal_scores.csv"), index=False)
-
-    # Save results
-    pd.DataFrame.from_dict(results, orient="index", columns=["Minimum L1 Distance"]).to_csv(os.path.join(results_dir, "results.csv"))
-
+from models.Optimizers import bribery_optimization,manipulation,control_by_cloning, control_by_deletion
+from utils.util import save_simulation_results 
+from config import experiments_config
 
 if __name__ == "__main__":
-    metrics = ["daily_users", "transaction_volume", "unique_wallets", "tvl"]
-
-    num_voters = 3
-    num_projects = 4
-    bribery_budget = 10000.0
-    cloning_budget = 3
-    deletion_budget = 3
-    elicitation =ElicitationMethod.CUMULATIVE,
-    aggregation = "arithmetic_mean",
-
+    
      # Initialize simulator
     simulator = VotingSimulator(
-        num_voters=num_voters,
-        metrics=metrics,
+        num_voters=experiments_config.num_voters,
+        num_projects=experiments_config.num_projects,
+        metrics=experiments_config.metrics,
         elicitation_method=ElicitationMethod.CUMULATIVE,
-        alpha=1.0
+        alpha=experiments_config.alpha
     )
 
     # Generate data
     votes = simulator.generate_votes()
-    value_matrix = np.random.uniform(0, 1, size=(num_projects, len(metrics)))
-
+    value_matrix = simulator.generate_value_matrix()
     
-    ideal_scores = np.random.uniform(0, 1, size=num_projects)
+    ideal_scores = simulator.generate_ideal_scores()
 
     # Create results directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -67,24 +38,51 @@ if __name__ == "__main__":
 
     results = {}
     print("Running Bribery Simulation...")
-    results["Bribery"] = run_bribery_simulation(votes, value_matrix, ideal_scores,  elicitation, aggregation,bribery_budget,metrics,num_voters,num_projects)
+    results["Bribery"] = min_distance = bribery_optimization(
+        votes, value_matrix, ideal_scores, experiments_config.bribery_budget,
+        experiments_config.elicitation, experiments_config.aggregation
+    )
+
+    # Print results
+    print(f"Minimum L1 distance: {min_distance}")
     
     print("Running Manipulation Simulation...")
-    results["Manipulation"]= run_manipulation_simulation(votes, value_matrix, ideal_scores,elicitation, aggregation,metrics,num_voters,num_projects)
+    results["Manipulation"]= min_distance = manipulation(
+        votes, value_matrix,
+        experiments_config.elicitation, experiments_config.aggregation
+    )
+
+    # Print results
+    print(f"Minimum L1 distance: {min_distance}")
     
+
+
     print("Running Deletion Simulation...")
-    results["Deletion"] = run_deletion_simulation(votes, value_matrix, ideal_scores,elicitation, aggregation,deletion_budget,metrics,num_voters,num_projects)
-    
+    results["Deletion"] = min_distance = control_by_deletion(
+        votes, value_matrix, ideal_scores, experiments_config.deletion_budget,
+        experiments_config.elicitation, experiments_config.aggregation
+    )
+
+    # Print results
+    print(f"Minimum L1 distance: {min_distance}")
+
+
     print("Running Cloning Simulation...")
-    results["Cloning"] = run_cloning_simulation(votes, value_matrix, ideal_scores,elicitation, aggregation,cloning_budget, metrics,num_voters,num_projects)
+    results["Cloning"] =  min_distance = control_by_cloning(
+        votes, value_matrix, ideal_scores, experiments_config.cloning_budget,
+        experiments_config.elicitation, experiments_config.aggregation
+    )
+
+    # Print results
+    print(f"Minimum L1 distance: {min_distance}")
 
     sim_params = {
-        "metrics": metrics,
-        "num_voters": num_voters,
-        "num_projects": num_projects,
-        "budget": bribery_budget,
-        "cloning_budget": cloning_budget,
-        "deletion_budget": deletion_budget,
+        "metrics": experiments_config.metrics,
+        "num_voters": experiments_config.num_voters,
+        "num_projects": experiments_config.num_projects,
+        "budget": experiments_config.bribery_budget,
+        "cloning_budget": experiments_config.cloning_budget,
+        "deletion_budget": experiments_config.deletion_budget,
        
     }
     save_simulation_results(results_dir, sim_params, votes, value_matrix, ideal_scores, results)

@@ -6,7 +6,7 @@ import itertools
 import random
 
   
-def bribery_optimization(votes, value_matrix, scores, budget, elicitation, aggregation):
+def bribery_optimization (votes, value_matrix, scores, budget, elicitation, aggregation):
 
     n, k = votes.shape  # Number of voters and features
     m = value_matrix.shape[0]  # Number of projects
@@ -15,12 +15,12 @@ def bribery_optimization(votes, value_matrix, scores, budget, elicitation, aggre
 
     # Decision variables
     z = cp.Variable((n, k), nonneg=True)  # Absolute bribery cost per voter-feature
-    score_prime = cp.Variable(m)  # New bribed scores
+    score_prime = cp.Variable(m)  
 
     # Constraints
     constraints = []
 
-    # Elicitation methods
+    # Elicitation methods 
     if elicitation == "fractional":
         imp_prime = cp.Variable((n, k), nonneg=True)  # Continuous variable
     elif elicitation == "cumulative":
@@ -453,67 +453,3 @@ def compute_l1_deletion(deleted_features, imp, val, ranking_matrix, elicitation,
     
     return l1_distance(new_scores, ideal_scores)
 
-# Define test importance and value matrices
-imp_plurality = np.array([
-    [1, 0, 0, 0],  # Voter 1 prefers Feature 0
-    [0, 1, 0, 0],  # Voter 2 prefers Feature 1
-    [0, 0, 1, 0],  # Voter 3 prefers Feature 2
-])
-
-imp_cumulative = np.array([
-    [0.4, 0.3, 0.2, 0.1],  # Voter 1 distributes weight
-    [0.1, 0.2, 0.3, 0.4],  # Voter 2 distributes weight
-    [0.25, 0.25, 0.25, 0.25],  # Voter 3 evenly distributes
-])
-
-val_matrix = np.array([
-    [0.9, 0.6, 0.3, 0.7],  # Feature values for Project 1
-    [0.4, 0.8, 0.5, 0.6],  # Feature values for Project 2
-    [0.7, 0.2, 0.9, 0.8],  # Feature values for Project 3
-])
-imp_approval = np.array([
-    [1, 0, 1, 0],  # Voter 1 approves Features 0 and 2
-    [0, 1, 0, 1],  # Voter 2 approves Features 1 and 3
-    [1, 1, 0, 0],  # Voter 3 approves Features 0 and 1
-])
-
-ideal_scores = np.array([0.75, 0.65, 0.85])  # Arbitrary target ideal scores
-budget = 2 # Only one feature can be deleted/cloned
-
-# Test 1: Plurality Voting with Deletion
-print("### Test 1: Plurality Voting with Feature Deletion ###")
-l1_deletion_plurality = control_by_deletion( imp_plurality, val_matrix, ideal_scores, budget, "plurality", "mean")
-print("L1 Distance After Deletion (Plurality):", l1_deletion_plurality)
-
-# Test 2: Cumulative Voting with Deletion
-print("\n### Test 2: Cumulative Voting with Feature Deletion ###")
-l1_deletion_cumulative = control_by_deletion(imp_cumulative, val_matrix, ideal_scores, budget, "cumulative", "median")
-print("L1 Distance After Deletion (Cumulative):", l1_deletion_cumulative)
-
-# Test 3: Plurality Voting with Cloning
-print("\n### Test 3: Plurality Voting with Feature Cloning ###")
-l1_cloning_plurality = control_by_cloning(imp_plurality, val_matrix, ideal_scores, budget, "plurality", "mean")
-print("L1 Distance After Cloning (Plurality):", l1_cloning_plurality)
-
-# Test 4: Cumulative Voting with Cloning
-print("\n### Test 4: Cumulative Voting with Feature Cloning ###")
-l1_cloning_cumulative = control_by_cloning(imp_cumulative, val_matrix, ideal_scores, budget, "cumulative", "median")
-print("L1 Distance After Cloning (Cumulative):", l1_cloning_cumulative)
-
-l1_deletion_approval = control_by_deletion(imp_approval, val_matrix, ideal_scores, budget, "approval", "mean")
-print("L1 Distance After Deletion (Approval):", l1_deletion_approval)
-
-# Test 6: Bribery Optimization
-print("\n### Test 6: Bribery Optimization ###")
-bribery_l1 = bribery_optimization(imp_cumulative, val_matrix, ideal_scores, budget, "cumulative", "mean")
-print("L1 Distance After Bribery:", bribery_l1)
-
-# Test 7: Manipulation
-print("\n### Test 7: Manipulation ###")
-manipulation_l1 = manipulation(imp_cumulative, val_matrix, "cumulative", "mean")
-print("L1 Distance After Manipulation:", manipulation_l1)
-
-# Test 8: Approval Voting with Cloning
-print("\n### Test 8: Approval Voting with Feature Cloning mean")
-l1_cloning_approval = control_by_cloning(imp_approval, val_matrix, ideal_scores, budget, "approval", "mean")
-print("L1 Distance After Cloning (Approval):", l1_cloning_approval)

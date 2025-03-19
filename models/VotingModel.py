@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple
 from scipy.stats import norm
 from scipy.optimize import minimize
 from itertools import combinations
+import copy
 
 class ElicitationMethod(Enum):
     FRACTIONAL = "fractional"  # Each vote between 0 and 1
@@ -14,10 +15,14 @@ class ElicitationMethod(Enum):
 class VotingSimulator:
     def __init__(self,
                  num_voters: int,
+                 num_projects: int,
                  metrics: List[str],
                  elicitation_method: ElicitationMethod,
                  alpha: float = 1.0):
+        
+
         self.num_voters = num_voters
+        self.num_projects = num_projects
         self.metrics = metrics
         self.elicitation_method = elicitation_method
         self.alpha = alpha  # Mallows model parameter
@@ -97,7 +102,7 @@ class VotingSimulator:
         # Replace any remaining nan values with 0 before aggregation
         votes = np.nan_to_num(votes, nan=0.0)
         
-        if method == "mean":
+        if method == "arithmetic_mean":
             return np.mean(votes, axis=0)
         elif method == "median":
             return np.median(votes, axis=0)
@@ -116,45 +121,37 @@ class VotingSimulator:
             Project scores of shape (num_projects,)
         """
         return value_matrix @ weights
+    
+    def generate_value_matrix(self):
+         value_matrix = np.random.uniform(0, 1, size=(self.num_projects, len(self.metrics)))
+         return value_matrix
+    
+    def normalize_value_matrix(self,value_matrix):
+    
+        return (value_matrix - value_matrix.min(axis=0)) / (value_matrix.max(axis=0) - value_matrix.min(axis=0))
+    
+    # Function to introduce strategic modifications to project features
+    def modify_project_features(self,value_matrix, modification_ratio=0.1, num_modified=10):
+        """Select a subset of projects and modify their feature values."""
+        modified_matrix = value_matrix
+        selected_projects = np.random.choice(value_matrix.shape[0], num_modified, replace=False)
+
+        for proj in selected_projects:
+            # Increase features within a 10% range
+            modification = np.random.uniform(1 - modification_ratio, 1 + modification_ratio, size=value_matrix.shape[1])
+            modified_matrix[proj, :] *= modification
+            modified_matrix[proj, :] = np.clip(modified_matrix[proj, :], 0, 1)  # Keep values within [0,1]
+
+        return modified_matrix, selected_projects
+    
+    def generate_ideal_scores(self):
+        ideal_scores = np.random.uniform(0, 1, size=self.num_projects)
+
+        return ideal_scores
+
+
+
 
     
-# Example usage
-if __name__ == "__main__":
 
-    metrics = ["daily_users", "transaction_volume", "unique_wallets"]
-    num_voters = 100
-    num_projects = 5
-    budget = 10.0
-
-
-    
-    # Test different elicitation methods
-    for method in ElicitationMethod:
-        print(f"\nTesting {method.value} elicitation:")
-        
-        simulator = VotingSimulator(
-            num_voters=num_voters,
-            metrics=metrics,
-            elicitation_method=method,
-            alpha=1.0
-        )
-        
-        # Generate votes
-        votes = simulator.generate_votes()
-        print("Sample votes:\n", votes[:3])
-        
-        # Aggregate votes
-        weights = simulator.aggregate_votes(votes, method="mean")
-        print("Aggregated weights:", weights)
-        
-        # Generate random value matrix
-        value_matrix = np.random.uniform(0, 1, size=(num_projects, len(metrics)))
-        
-        # Compute project scores
-        scores = simulator.compute_scores(value_matrix, weights)
-        print("Project scores:", scores)
-        
-        # Create ideal scores (random for example)
-        ideal_scores = np.random.uniform(0, 1, size=num_projects)
-        
         

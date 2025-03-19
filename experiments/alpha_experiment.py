@@ -3,34 +3,8 @@ import os
 import pandas as pd
 from datetime import datetime
 from models.VotingModel import VotingSimulator, ElicitationMethod
-from simulations.bribery_simulation import run_bribery_simulation
-from simulations.manipulation_simulation import run_manipulation_simulation
-from simulations.deletion_simulation import run_deletion_simulation
-from simulations.cloning_simulation import run_cloning_simulation
-
-def normalize_value_matrix(value_matrix):
-    """Normalize each metric in the value matrix to the range [0, 1]."""
-    return (value_matrix - value_matrix.min(axis=0)) / (value_matrix.max(axis=0) - value_matrix.min(axis=0))
-
-def save_simulation_results(results_dir, sim_params, votes, value_matrix, ideal_scores, results):
-    # Convert sim_params to a format that pd.DataFrame.from_dict can handle
-    sim_params_cleaned = {k: str(v) if isinstance(v, (list, dict)) else v for k, v in sim_params.items()}
-
-    # Save simulation parameters
-    pd.DataFrame.from_dict(sim_params_cleaned, orient="index", columns=["Value"]).to_csv(os.path.join(results_dir, "sim_params.csv"))
-
-    # Save votes
-    pd.DataFrame(votes).to_csv(os.path.join(results_dir, "votes.csv"), index=False)
-
-    # Save value matrix
-    pd.DataFrame(value_matrix).to_csv(os.path.join(results_dir, "value_matrix.csv"), index=False)
-
-    # Save ideal scores
-    pd.DataFrame(ideal_scores, columns=["ideal_scores"]).to_csv(os.path.join(results_dir, "ideal_scores.csv"), index=False)
-
-    # Save results
-    pd.DataFrame.from_dict(results, orient="index", columns=["Minimum L1 Distance"]).to_csv(os.path.join(results_dir, "results.csv"))
-
+from utils.util import save_simulation_results
+from models.Optimizers import bribery_optimization,manipulation,control_by_cloning, control_by_deletion
 
 if __name__ == "__main__":
     # Define metrics and parameters
@@ -66,7 +40,7 @@ for alpha in alpha_values:
     ideal_scores = np.random.uniform(0, 1, size=num_projects)
 
     # Normalize value matrix
-    value_matrix = normalize_value_matrix(value_matrix)
+    value_matrix = simulator.normalize_value_matrix(value_matrix)
 
     # Create subdirectory for this alpha value
     alpha_dir = os.path.join(results_dir, f"alpha_{alpha}")
@@ -81,26 +55,36 @@ for alpha in alpha_values:
             # Update simulator with current elicitation method
             simulator.elicitation_method = elicitation
 
+            print(f"Running simulations for {elicitation} elicitation and {aggregation} aggregation...")
+
+            # Update simulator with current elicitation method
+            simulator.elicitation_method = elicitation
+
             # Run bribery simulation
-            results[f"Bribery_{elicitation.value}_{aggregation}"] = run_bribery_simulation(
-                votes, value_matrix, ideal_scores, elicitation.value, aggregation, bribery_budget
-            )
+            results[f"Bribery_{elicitation.value}_{aggregation}"] = bribery_optimization(
+                                                votes, value_matrix, ideal_scores, bribery_budget,
+                                                elicitation, aggregation
+                                            )
+
+            
+    
+   
 
             # Run manipulation simulation
-            results[f"Manipulation_{elicitation.value}_{aggregation}"] = run_manipulation_simulation(
-                votes, value_matrix, ideal_scores, elicitation.value, aggregation
-            )
-
+            results[f"Manipulation_{elicitation.value}_{aggregation}"] = min_distance = manipulation(
+                                                                                    votes, value_matrix,
+                                                                                    elicitation, aggregation
+                                                                                    )
             # Run deletion simulation
-            results[f"Deletion_{elicitation.value}_{aggregation}"] = run_deletion_simulation(
-                votes, value_matrix, ideal_scores, elicitation.value, aggregation, deletion_budget
-            )
-
+            results[f"Deletion_{elicitation.value}_{aggregation}"] = control_by_deletion(
+                                    votes, value_matrix, ideal_scores, deletion_budget,
+                                    elicitation, aggregation
+                                )
             # Run cloning simulation
-            results[f"Cloning_{elicitation.value}_{aggregation}"] = run_cloning_simulation(
-                votes, value_matrix, ideal_scores, elicitation.value, aggregation, cloning_budget
+            results[f"Cloning_{elicitation.value}_{aggregation}"] = control_by_cloning(
+                                    votes, value_matrix, ideal_scores, cloning_budget,
+                                    elicitation, aggregation
             )
-
     # Save simulation results for this alpha value
     sim_params = {
         "metrics": metrics,
