@@ -12,7 +12,7 @@ from datetime import datetime
 from models.voting_model import VotingSimulator, ElicitationMethod
 from models.optimizers import bribery_optimization, manipulation, control_by_cloning, control_by_deletion
 from scripts import config
-from scripts.util import save_simulation_results
+from scripts.util import save_simulation_results,visualize_combinations_experiment_results
 
 
 elicitation_methods = [ElicitationMethod.CUMULATIVE, ElicitationMethod.FRACTIONAL, ElicitationMethod.APPROVAL, ElicitationMethod.PLURALITY]
@@ -70,7 +70,7 @@ for elicitation in elicitation_methods:
                 "deletion_resistance": l1_deletion,
                 "cloning_resistance": l1_cloning
             })
-            print(resistance_results)
+           
 
 # Convert results to DataFrame and compute average L1 distances
 df_results = pd.DataFrame(resistance_results)
@@ -90,7 +90,6 @@ sim_params = {
     
 }
 save_simulation_results(results_dir, sim_params, votes, value_matrix, ideal_scores, df_results)
-
-print(df_summary)
+visualize_combinations_experiment_results(results_dir, df_summary,df_results)
 
 print("\nExperiment completed! Summary results have been saved and displayed.")
