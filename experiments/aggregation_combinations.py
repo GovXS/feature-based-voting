@@ -1,14 +1,11 @@
 import sys
 import os
-
-# Get the project root directory dynamically
+import numpy as np
+import pandas as pd
+from datetime import datetime
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(project_root)
 
-import numpy as np
-import os
-import pandas as pd
-from datetime import datetime
 from models.voting_model import VotingSimulator, ElicitationMethod
 from models.optimizers import bribery_optimization, manipulation, control_by_cloning, control_by_deletion
 from scripts import config
