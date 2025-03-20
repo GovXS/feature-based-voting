@@ -1,6 +1,7 @@
 # Experiment parameters
 from models.voting_model import VotingSimulator, ElicitationMethod
-num_instances = 10  # Number of independent instances
+
+num_instances = 200  # Number of independent instances
 num_voters = 100
 num_projects = 200
 bribery_budget = 10000.0

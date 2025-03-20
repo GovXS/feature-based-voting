@@ -20,7 +20,7 @@ aggregation_methods = ["arithmetic_mean", "median"]
 
 # Create results directory
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-results_dir = os.path.join("results", "intsances", f"run_{timestamp}")
+results_dir = os.path.join("results", "aggregation_combinations", f"run_{timestamp}")
 os.makedirs(results_dir, exist_ok=True)
 
 # Storage for final results

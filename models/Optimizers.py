@@ -18,7 +18,7 @@ def bribery_optimization(votes, value_matrix, scores, budget, elicitation, aggre
     score_prime = cp.Variable(m)  # New bribed scores
     imp_agg_original = compute_aggregated_importance(votes, aggregation)
     scores_original = compute_scores(imp_agg_original, value_matrix)
-    l1_original = np.sum(np.abs(scores - ideal_scores))
+    l1_original = np.sum(np.abs(scores - scores_original))
     # Constraints
     constraints = []
 
@@ -129,7 +129,7 @@ def manipulation(votes, value_matrix, elicitation,aggregation):
     ideal_score = value_matrix @ votes[random_agent_index, :]
     imp_agg_original = compute_aggregated_importance(votes, aggregation)
     scores_original = compute_scores(imp_agg_original, value_matrix)
-    l1_original = np.sum(np.abs(ideal_score - ideal_scores))
+    l1_original = np.sum(np.abs(ideal_score - scores_original))
     constraints = []
 
     # Elicitation methods
