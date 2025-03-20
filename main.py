@@ -9,17 +9,17 @@ from models.VotingModel import VotingSimulator, ElicitationMethod
 import numpy as np
 from models.Optimizers import bribery_optimization,manipulation,control_by_cloning, control_by_deletion
 from utils.util import save_simulation_results 
-from config import experiments_config
+from config import config
 
 if __name__ == "__main__":
     
      # Initialize simulator
     simulator = VotingSimulator(
-        num_voters=experiments_config.num_voters,
-        num_projects=experiments_config.num_projects,
-        metrics=experiments_config.metrics,
+        num_voters=config.num_voters,
+        num_projects=config.num_projects,
+        metrics=config.metrics,
         elicitation_method=ElicitationMethod.CUMULATIVE,
-        alpha=experiments_config.alpha
+        alpha=config.alpha
     )
 
     # Generate data
@@ -39,8 +39,8 @@ if __name__ == "__main__":
     results = {}
     print("Running Bribery Simulation...")
     results["Bribery"] = min_distance = bribery_optimization(
-        votes, value_matrix, ideal_scores, experiments_config.bribery_budget,
-        experiments_config.elicitation, experiments_config.aggregation
+        votes, value_matrix, ideal_scores, config.bribery_budget,
+        config.elicitation, config.aggregation
     )
 
     # Print results
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     print("Running Manipulation Simulation...")
     results["Manipulation"]= min_distance = manipulation(
         votes, value_matrix,
-        experiments_config.elicitation, experiments_config.aggregation
+        config.elicitation, config.aggregation
     )
 
     # Print results
@@ -59,8 +59,8 @@ if __name__ == "__main__":
 
     print("Running Deletion Simulation...")
     results["Deletion"] = min_distance = control_by_deletion(
-        votes, value_matrix, ideal_scores, experiments_config.deletion_budget,
-        experiments_config.elicitation, experiments_config.aggregation
+        votes, value_matrix, ideal_scores, config.deletion_budget,
+        config.elicitation, config.aggregation
     )
 
     # Print results
@@ -69,20 +69,20 @@ if __name__ == "__main__":
 
     print("Running Cloning Simulation...")
     results["Cloning"] =  min_distance = control_by_cloning(
-        votes, value_matrix, ideal_scores, experiments_config.cloning_budget,
-        experiments_config.elicitation, experiments_config.aggregation
+        votes, value_matrix, ideal_scores, config.cloning_budget,
+        config.elicitation, config.aggregation
     )
 
     # Print results
     print(f"Minimum L1 distance: {min_distance}")
 
     sim_params = {
-        "metrics": experiments_config.metrics,
-        "num_voters": experiments_config.num_voters,
-        "num_projects": experiments_config.num_projects,
-        "budget": experiments_config.bribery_budget,
-        "cloning_budget": experiments_config.cloning_budget,
-        "deletion_budget": experiments_config.deletion_budget,
+        "metrics": config.metrics,
+        "num_voters": config.num_voters,
+        "num_projects": config.num_projects,
+        "budget": config.bribery_budget,
+        "cloning_budget": config.cloning_budget,
+        "deletion_budget": config.deletion_budget,
        
     }
     save_simulation_results(results_dir, sim_params, votes, value_matrix, ideal_scores, results)

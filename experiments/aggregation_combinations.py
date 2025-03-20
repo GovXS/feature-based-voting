@@ -11,11 +11,11 @@ import pandas as pd
 from datetime import datetime
 from models.VotingModel import VotingSimulator, ElicitationMethod
 from models.Optimizers import bribery_optimization, manipulation, control_by_cloning, control_by_deletion
-from config import experiments_config
+from config import config
 from utils.util import save_simulation_results
 
 
-elicitation_methods = [ElicitationMethod.CUMULATIVE, ElicitationMethod.FRACTIONAL, ElicitationMethod.APPROVAL]
+elicitation_methods = [ElicitationMethod.CUMULATIVE, ElicitationMethod.FRACTIONAL, ElicitationMethod.APPROVAL, ElicitationMethod.PLURALITY]
 aggregation_methods = ["arithmetic_mean", "median"]
 
 # Create results directory
@@ -30,16 +30,16 @@ resistance_results = []
 for elicitation in elicitation_methods:
     print(f"\nRunning simulations for {elicitation.value} elicitation...\n")
 
-    for instance in range(experiments_config.num_instances):
-        print(f"Generating instance {instance + 1}/{experiments_config.num_instances}...")
+    for instance in range(config.num_instances):
+        print(f"Generating instance {instance + 1}/{config.num_instances}...")
 
         # Step 1: Generate one instance of votes, value matrix, and ideal scores
         simulator = VotingSimulator(
-            num_voters=experiments_config.num_voters,
-            num_projects=experiments_config.num_projects,
-            metrics=experiments_config.metrics,
+            num_voters=config.num_voters,
+            num_projects=config.num_projects,
+            metrics=config.metrics,
             elicitation_method=elicitation,
-            alpha=experiments_config.alpha
+            alpha=config.alpha
         )
         votes = simulator.generate_votes()
         value_matrix = simulator.generate_value_matrix()
@@ -50,16 +50,16 @@ for elicitation in elicitation_methods:
             print(f"  Testing {aggregation} aggregation...")
 
             # Bribery Optimization
-            l1_bribery = bribery_optimization(votes, value_matrix, ideal_scores, experiments_config.bribery_budget, elicitation, aggregation)
+            l1_bribery = bribery_optimization(votes, value_matrix, ideal_scores, config.bribery_budget, elicitation, aggregation)
 
             # Manipulation
             l1_manipulation = manipulation(votes, value_matrix, elicitation, aggregation)
 
             # Feature Deletion Control
-            l1_deletion = control_by_deletion(votes, value_matrix, ideal_scores, experiments_config.deletion_budget, elicitation, aggregation)
+            l1_deletion = control_by_deletion(votes, value_matrix, ideal_scores, config.deletion_budget, elicitation, aggregation)
 
             # Feature Cloning Control
-            l1_cloning = control_by_cloning(votes, value_matrix, ideal_scores, experiments_config.cloning_budget, elicitation, aggregation)
+            l1_cloning = control_by_cloning(votes, value_matrix, ideal_scores, config.cloning_budget, elicitation, aggregation)
 
             # Store results
             resistance_results.append({
@@ -81,12 +81,12 @@ df_results.to_csv(os.path.join(results_dir, "detailed_results.csv"), index=False
 df_summary.to_csv(os.path.join(results_dir, "summary_results.csv"))
 
 sim_params = {
-    "metrics": experiments_config.metrics,
-    "num_voters": experiments_config.num_voters,
-    "num_projects": experiments_config.num_projects,
-    "budget": experiments_config.bribery_budget,
-    "cloning_budget": experiments_config.cloning_budget,
-    "deletion_budget": experiments_config.deletion_budget,
+    "metrics": config.metrics,
+    "num_voters": config.num_voters,
+    "num_projects": config.num_projects,
+    "budget": config.bribery_budget,
+    "cloning_budget": config.cloning_budget,
+    "deletion_budget": config.deletion_budget,
     
 }
 save_simulation_results(results_dir, sim_params, votes, value_matrix, ideal_scores, df_results)

@@ -12,7 +12,7 @@ import pandas as pd
 from datetime import datetime
 from models.VotingModel import VotingSimulator, ElicitationMethod
 
-from config import experiments_config
+from config import config
 
 elicitation_methods = [ElicitationMethod.CUMULATIVE, ElicitationMethod.FRACTIONAL, ElicitationMethod.APPROVAL]
 aggregation_methods = ["arithmetic_mean", "median"]
@@ -30,16 +30,16 @@ strategic_results = []
 for elicitation in elicitation_methods:
     print(f"\nRunning simulations for {elicitation.value} elicitation...\n")
 
-    for instance in range(experiments_config.num_instances):
-        print(f"Generating instance {instance + 1}/{experiments_config.num_instances}...")
+    for instance in range(config.num_instances):
+        print(f"Generating instance {instance + 1}/{config.num_instances}...")
 
         # Step 1: Generate voting data
         simulator = VotingSimulator(
-            num_voters=experiments_config.num_voters,
-            num_projects=experiments_config.num_projects,
-            metrics=experiments_config.metrics,
+            num_voters=config.num_voters,
+            num_projects=config.num_projects,
+            metrics=config.metrics,
             elicitation_method=elicitation,
-            alpha=experiments_config.alpha
+            alpha=config.alpha
         )
         votes = simulator.generate_votes()
         value_matrix = simulator.generate_value_matrix()
