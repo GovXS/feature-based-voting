@@ -12,7 +12,7 @@ import pandas as pd
 from datetime import datetime
 from models.voting_model import VotingSimulator, ElicitationMethod
 
-from utils import config
+from scripts import config
 
 elicitation_methods = [ElicitationMethod.CUMULATIVE, ElicitationMethod.FRACTIONAL, ElicitationMethod.APPROVAL]
 aggregation_methods = ["arithmetic_mean", "median"]

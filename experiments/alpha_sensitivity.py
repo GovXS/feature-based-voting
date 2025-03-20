@@ -3,7 +3,7 @@ import os
 import pandas as pd
 from datetime import datetime
 from models.voting_model import VotingSimulator, ElicitationMethod
-from utils.util import save_simulation_results
+from scripts.util import save_simulation_results
 from models.optimizers import bribery_optimization,manipulation,control_by_cloning, control_by_deletion
 
 if __name__ == "__main__":
