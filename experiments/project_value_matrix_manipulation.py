@@ -10,7 +10,7 @@ import numpy as np
 import os
 import pandas as pd
 from datetime import datetime
-from models.VotingModel import VotingSimulator, ElicitationMethod
+from models.voting_model import VotingSimulator, ElicitationMethod
 
 from config import config
 

@@ -3,9 +3,9 @@ import numpy as np
 import os
 import pandas as pd
 from datetime import datetime
-from models.VotingModel import VotingSimulator, ElicitationMethod
+from models.voting_model import VotingSimulator, ElicitationMethod
 
-from models.VotingModel import VotingSimulator, ElicitationMethod
+from models.voting_model import VotingSimulator, ElicitationMethod
 import numpy as np
 from models.Optimizers import bribery_optimization,manipulation,control_by_cloning, control_by_deletion
 from utils.util import save_simulation_results 
