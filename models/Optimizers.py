@@ -6,7 +6,7 @@ import itertools
 import random
 
   
-def bribery_optimization (votes, value_matrix, scores, budget, elicitation, aggregation):
+def bribery_optimization(votes, value_matrix, scores, budget, elicitation, aggregation):
 
     n, k = votes.shape  # Number of voters and features
     m = value_matrix.shape[0]  # Number of projects
@@ -15,12 +15,14 @@ def bribery_optimization (votes, value_matrix, scores, budget, elicitation, aggr
 
     # Decision variables
     z = cp.Variable((n, k), nonneg=True)  # Absolute bribery cost per voter-feature
-    score_prime = cp.Variable(m)  
-
+    score_prime = cp.Variable(m)  # New bribed scores
+    imp_agg_original = compute_aggregated_importance(votes, aggregation)
+    scores_original = compute_scores(imp_agg_original, value_matrix)
+    l1_original = np.sum(np.abs(scores - ideal_scores))
     # Constraints
     constraints = []
 
-    # Elicitation methods 
+    # Elicitation methods
     if elicitation == "fractional":
         imp_prime = cp.Variable((n, k), nonneg=True)  # Continuous variable
     elif elicitation == "cumulative":
@@ -100,7 +102,7 @@ def bribery_optimization (votes, value_matrix, scores, budget, elicitation, aggr
         print(problem.status)
         return None  # Problem is infeasible or unbounded, return None instead of failing
 
-    return l1_distance.value
+    return abs(l1_original-l1_distance.value)
 
 
 def manipulation(votes, value_matrix, elicitation,aggregation):
@@ -125,7 +127,9 @@ def manipulation(votes, value_matrix, elicitation,aggregation):
     score_prime = cp.Variable(m)  # New manipulated scores
     # Compute the ideal score for the manipulator
     ideal_score = value_matrix @ votes[random_agent_index, :]
-
+    imp_agg_original = compute_aggregated_importance(votes, aggregation)
+    scores_original = compute_scores(imp_agg_original, value_matrix)
+    l1_original = np.sum(np.abs(ideal_score - ideal_scores))
     constraints = []
 
     # Elicitation methods
@@ -190,7 +194,7 @@ def manipulation(votes, value_matrix, elicitation,aggregation):
         print(problem.status)
         return None  # Problem is infeasible or unbounded, return None instead of failing
 
-    return l1_distance.value
+    return abs(l1_original-l1_distance.value)
 
 def generate_ranking_matrix(imp):
     """Generate ranking preferences for Plurality voting."""
@@ -325,12 +329,6 @@ def simulated_annealing_general(
 
         # Compute new L1 distance
         new_l1 = compute_l1(new_solution)
-        
-        # # Sanity check for cumulative + mean/median
-        # if elicitation == "cumulative" and operation == "cloning":
-        #     original_l1 = l1_distance(compute_scores(compute_aggregated_importance(imp, "mean"), val), compute_scores(compute_aggregated_importance(imp, "median"), val))
-        #     assert abs(original_l1 - new_l1) < epsilon, "Sanity check failed: Cloning under cumulative + mean/median should not affect scores."
-        
         if new_l1 < best_l1:
             best_solution = new_solution
             best_l1 = new_l1
@@ -349,6 +347,9 @@ def simulated_annealing_general(
 
 def control_by_deletion(imp, val, ideal_scores, budget, elicitation, aggregation):
     """Simulated annealing for control by deletion with budget constraint."""
+    imp_agg_original = compute_aggregated_importance(imp, aggregation)
+    scores_original = compute_scores(imp_agg_original, val)
+    l1_original = l1_distance(scores_original, ideal_scores)
     remaining_features = set(range(imp.shape[1]))
     ranking_matrix = generate_ranking_matrix(imp) if elicitation == "plurality" else None
 
@@ -363,13 +364,13 @@ def control_by_deletion(imp, val, ideal_scores, budget, elicitation, aggregation
         ranking_matrix,
         max_iter=500
     )
-    return best_l1
+    return abs(l1_original-best_l1)
 
 def control_by_cloning(imp, val, ideal_scores, budget, elicitation, aggregation):
     """Simulated annealing for control by cloning with budget constraint."""
-    if elicitation == "cumulative" and aggregation in {"mean", "median"}:
-        return l1_distance(compute_scores(compute_aggregated_importance(imp, aggregation), val), ideal_scores)
-
+    imp_agg_original = compute_aggregated_importance(imp, aggregation)
+    scores_original = compute_scores(imp_agg_original, val)
+    l1_original = l1_distance(scores_original, ideal_scores)
     initial_cloning_plan = {f: 0 for f in range(imp.shape[1])}
 
     cloned_plan, best_l1 = simulated_annealing_general(
@@ -382,7 +383,7 @@ def control_by_cloning(imp, val, ideal_scores, budget, elicitation, aggregation)
         val,
         max_iter=500
     )
-    return best_l1
+    return abs(l1_original-best_l1)
 
 def compute_l1_cloning(cloning_plan, imp, val, elicitation, aggregation, ideal_scores):
     """Compute L1 distance after cloning operation."""
@@ -452,4 +453,3 @@ def compute_l1_deletion(deleted_features, imp, val, ranking_matrix, elicitation,
     new_scores = compute_scores(imp_agg_new, val_new)
     
     return l1_distance(new_scores, ideal_scores)
-
