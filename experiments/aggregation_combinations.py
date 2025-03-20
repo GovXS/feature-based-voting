@@ -11,7 +11,7 @@ import pandas as pd
 from datetime import datetime
 from models.voting_model import VotingSimulator, ElicitationMethod
 from models.optimizers import bribery_optimization, manipulation, control_by_cloning, control_by_deletion
-from config import config
+from utils import config
 from utils.util import save_simulation_results
 
 

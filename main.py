@@ -9,7 +9,7 @@ from models.voting_model import VotingSimulator, ElicitationMethod
 import numpy as np
 from models.optimizers import bribery_optimization,manipulation,control_by_cloning, control_by_deletion
 from utils.util import save_simulation_results 
-from config import config
+from utils import config
 
 if __name__ == "__main__":
     
