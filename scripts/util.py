@@ -118,6 +118,138 @@ def visualize_combinations_experiment_results(results_dir, summary_results_df,de
     plt.show()
 
 
+def visualize_alpha_sensitivity_experiment_results(results_dir,alpha_results_df):
+
+    # Set up the plot aesthetics
+    sns.set(style="whitegrid")
+    plt.figure(figsize=(16, 12))
+
+    # Plot Bribery Resistance by alpha
+    plt.subplot(2, 2, 1)
+    sns.lineplot(data=alpha_results_df, x='alpha', y='bribery_l1', hue='elicitation', style='aggregation', markers=True, dashes=False)
+    plt.title('Bribery Resistance by Alpha')
+    plt.xlabel('Alpha')
+    plt.ylabel('Average L1 Distance')
+
+    # Plot Manipulation Resistance by alpha
+    plt.subplot(2, 2, 2)
+    sns.lineplot(data=alpha_results_df, x='alpha', y='manipulation_l1', hue='elicitation', style='aggregation', markers=True, dashes=False)
+    plt.title('Manipulation Resistance by Alpha')
+    plt.xlabel('Alpha')
+    plt.ylabel('Average L1 Distance')
+
+    # Plot Deletion Resistance by alpha
+    plt.subplot(2, 2, 3)
+    sns.lineplot(data=alpha_results_df, x='alpha', y='deletion_l1', hue='elicitation', style='aggregation', markers=True, dashes=False)
+    plt.title('Deletion Resistance by Alpha')
+    plt.xlabel('Alpha')
+    plt.ylabel('Average L1 Distance')
+
+    # Cloning Resistance by alpha (likely flat as seen before)
+    plt.subplot(2, 2, 4)
+    sns.lineplot(data=alpha_results_df, x='alpha', y='cloning_li', hue='elicitation', style='aggregation', markers=True, dashes=False)
+    plt.title('Cloning Resistance by Alpha')
+    plt.xlabel('Alpha')
+    plt.ylabel('Average L1 Distance')
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(results_dir, "plot_1.png"))  # Save Plot 1
+    plt.show()
+
+    # Additional visualizations to better explore the alpha sensitivity experiment results
+
+    # Violin plots to explore distribution across alpha values and method combinations
+    plt.figure(figsize=(16, 12))
+
+    # Bribery resistance distributions
+    plt.subplot(2, 2, 1)
+    sns.violinplot(data=alpha_results_df, x='alpha', y='bribery_l1', hue='elicitation', split=True)
+    plt.title('Bribery Resistance Distributions by Alpha')
+    plt.xlabel('Alpha')
+    plt.ylabel('Bribery Resistance (L1)')
+
+    # Manipulation resistance distributions
+    plt.subplot(2, 2, 2)
+    sns.violinplot(data=alpha_results_df, x='alpha', y='manipulation_l1', hue='elicitation', split=True)
+    plt.title('Manipulation Resistance Distributions by Alpha')
+    plt.xlabel('Alpha')
+    plt.ylabel('Manipulation Resistance (L1)')
+
+    # Deletion resistance distributions
+    plt.subplot(2, 2, 3)
+    sns.violinplot(data=alpha_results_df, x='alpha', y='deletion_l1', hue='elicitation', split=True)
+    plt.title('Deletion Resistance Distributions by Alpha')
+    plt.xlabel('Alpha')
+    plt.ylabel('Deletion Resistance (L1)')
+
+    # Aggregate resistance comparison (excluding cloning as it is consistently zero)
+    alpha_results_df['aggregate_resistance'] = alpha_results_df[['bribery_l1', 'manipulation_l1', 'deletion_l1']].mean(axis=1)
+    plt.subplot(2, 2, 4)
+    sns.lineplot(data=alpha_results_df, x='alpha', y='aggregate_resistance', hue='elicitation', style='aggregation', markers=True, dashes=False)
+    plt.title('Aggregate Resistance by Alpha')
+    plt.xlabel('Alpha')
+    plt.ylabel('Aggregate Resistance (Average L1 Distance)')
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(results_dir, "plot_2.png"))  # Save Plot 1
+    plt.show()
+
+def visualize_data_manipulation_results(results_dir,summary_results_df, detailed_results_df):
+    # Import visualization libraries again after environment reset
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
+    # Set up plot aesthetics
+    sns.set(style="whitegrid")
+    plt.figure(figsize=(16, 6))
+
+    # Visualization for Score Changes due to Data Manipulation
+    plt.subplot(1, 2, 1)
+    sns.barplot(data=summary_results_df, x='elicitation', y='score_change', hue='aggregation')
+    plt.title('Average Score Change Due to Data Manipulation')
+    plt.xlabel('Elicitation Method')
+    plt.ylabel('Average Score Change')
+
+    # Visualization for Rank Changes due to Data Manipulation
+    plt.subplot(1, 2, 2)
+    sns.barplot(data=summary_results_df, x='elicitation', y='rank_change', hue='aggregation')
+    plt.title('Average Rank Change Due to Data Manipulation')
+    plt.xlabel('Elicitation Method')
+    plt.ylabel('Average Rank Change')
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(results_dir, "plot_1.png"))  # Save Plot 1
+    plt.show()
+
+    # Additional analyses: Distribution visualization and detailed relationships
+
+    plt.figure(figsize=(16, 10))
+
+    # Distribution of Score Changes
+    plt.subplot(2, 2, 1)
+    sns.boxplot(data=detailed_results_df, x='elicitation', y='score_change', hue='aggregation')
+    plt.title('Distribution of Score Changes by Method')
+    plt.xlabel('Elicitation Method')
+    plt.ylabel('Score Change')
+
+    # Distribution of Rank Changes
+    plt.subplot(2, 2, 2)
+    sns.boxplot(data=detailed_results_df, x='elicitation', y='rank_change', hue='aggregation')
+    plt.title('Distribution of Rank Changes by Method')
+    plt.xlabel('Elicitation Method')
+    plt.ylabel('Rank Change')
+
+    # Relationship between Score Change and Rank Change
+    plt.subplot(2, 1, 2)
+    sns.scatterplot(data=detailed_results_df, x='score_change', y='rank_change', hue='elicitation', style='aggregation')
+    plt.title('Relationship between Score Change and Rank Change')
+    plt.xlabel('Score Change')
+    plt.ylabel('Rank Change')
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(results_dir, "plot_2.png"))  # Save Plot 1
+    plt.show()
+
 
 
 

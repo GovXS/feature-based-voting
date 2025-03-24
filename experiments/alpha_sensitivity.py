@@ -1,9 +1,13 @@
-import numpy as np
+import sys
 import os
+import numpy as np
 import pandas as pd
 from datetime import datetime
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(project_root)
+
 from models.voting_model import VotingSimulator, ElicitationMethod
-from scripts.util import save_simulation_results
+from scripts.util import save_simulation_results,visualize_alpha_sensitivity_experiment_results
 from models.optimizers import bribery_optimization,manipulation,control_by_cloning, control_by_deletion
 from scripts import config
 
@@ -13,11 +17,11 @@ if __name__ == "__main__":
 
     # Create results directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_dir = os.path.join("results", "alpha_experiment", f"run_{timestamp}")
+    results_dir = os.path.join("results", "alpha_sensitivity_experiment", f"run_{timestamp}")
     os.makedirs(results_dir, exist_ok=True)
 
     # Dictionary to store all results
-    all_results = {}
+    all_results = []
 
     # Run simulations for each alpha value
     for alpha in alpha_values:
@@ -45,7 +49,7 @@ if __name__ == "__main__":
             value_matrix = simulator.normalize_value_matrix(value_matrix)
 
             # Run simulations for each combination of elicitation and aggregation
-            for elicitation in [ElicitationMethod.CUMULATIVE, ElicitationMethod.FRACTIONAL, ElicitationMethod.APPROVAL]:
+            for elicitation in [ElicitationMethod.CUMULATIVE, ElicitationMethod.FRACTIONAL, ElicitationMethod.APPROVAL,ElicitationMethod.PLURALITY]:
                 for aggregation in ["arithmetic_mean", "geometric_mean"]:
                     print(f"    Running {elicitation.value} elicitation and {aggregation} aggregation...")
 
@@ -97,5 +101,7 @@ if __name__ == "__main__":
     }
 
     save_simulation_results(results_dir, sim_params, votes, value_matrix, ideal_scores,df_all_results)
+    
+    visualize_alpha_sensitivity_experiment_results(results_dir,df_all_results)
 
     print(f"Alpha sensitivity experiment results saved to: {results_dir}")
