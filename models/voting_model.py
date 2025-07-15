@@ -1,6 +1,6 @@
 from enum import Enum
 import numpy as np
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from scipy.stats import norm
 from scipy.optimize import minimize
 from itertools import combinations
@@ -18,7 +18,8 @@ class VotingSimulator:
                  num_projects: int,
                  metrics: List[str],
                  elicitation_method: ElicitationMethod,
-                 alpha: float = 1.0):
+                 alpha: float = 1.0,
+                 real_votes: Optional[np.ndarray] = None):
         
 
         self.num_voters = num_voters
@@ -26,6 +27,16 @@ class VotingSimulator:
         self.metrics = metrics
         self.elicitation_method = elicitation_method
         self.alpha = alpha  # Mallows model parameter
+        self.real_votes = real_votes  # Optional real voting data
+
+    def set_real_votes(self, votes: np.ndarray):
+        """Set real voting data to use instead of synthetic generation."""
+        self.real_votes = votes
+        self.num_voters = votes.shape[0]
+        if votes.shape[1] != len(self.metrics):
+            print(f"Warning: Real votes have {votes.shape[1]} metrics, but config specifies {len(self.metrics)}")
+            # Update metrics to match real data
+            self.metrics = [f"metric_{i}" for i in range(votes.shape[1])]
 
     def _generate_base_vote(self) -> np.ndarray:
         """Generate a base vote according to the elicitation method"""
@@ -85,10 +96,15 @@ class VotingSimulator:
         return perturbed
 
     def generate_votes(self) -> np.ndarray:
-        """Generate votes using Mallows model"""
-        base_vote = self._generate_base_vote()
-        votes = np.array([self._apply_mallows(base_vote) for _ in range(self.num_voters)])
-        return votes
+        """Generate votes using real data if available, otherwise use Mallows model"""
+        if self.real_votes is not None:
+            print(f"Using real voting data with shape {self.real_votes.shape}")
+            return self.real_votes
+        else:
+            print("Using synthetic voting data generation")
+            base_vote = self._generate_base_vote()
+            votes = np.array([self._apply_mallows(base_vote) for _ in range(self.num_voters)])
+            return votes
 
     def aggregate_votes(self, votes: np.ndarray, method: str = "mean") -> np.ndarray:
         """
